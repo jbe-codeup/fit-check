@@ -1,0 +1,213 @@
+{
+  "name": "fitcheck-fit-verdicts",
+  "version": 1,
+  "description": "Labelled job and candidate pairs for fitcheck. Each pair is one recruiter interview; the label is the verdict a careful human screener would give from the candidate's notes. All candidates and jobs are fictional.",
+  "candidates": {
+    "sam-rivera": "sample_notes",
+    "jordan-lee": "evals/fit/candidates/jordan-lee",
+    "casey-nguyen": "evals/fit/candidates/casey-nguyen"
+  },
+  "jobs_file": "evals/fit/jobs.json",
+  "pairs": [
+    {
+      "id": "sam-rivera--principal-backend-go",
+      "candidate": "sam-rivera",
+      "job": "principal-backend-go",
+      "verdict": "Fit",
+      "rationale": "Go and Python on AWS, the Lambda to ECS migration, deploy reliability and cross-team mentoring cover every must-have.",
+      "borderline": false
+    },
+    {
+      "id": "sam-rivera--staff-backend-reliability",
+      "candidate": "sam-rivera",
+      "job": "staff-backend-reliability",
+      "verdict": "Fit",
+      "rationale": "Deploy success 71% to 98%, a zero-downtime ECS migration, Datadog dashboards and a three-team API effort.",
+      "borderline": false
+    },
+    {
+      "id": "sam-rivera--backend-python-payments",
+      "candidate": "sam-rivera",
+      "job": "backend-python-payments",
+      "verdict": "Fit",
+      "rationale": "Built a Python FastAPI and Postgres reconciliation service at a payments company, plus contract tests.",
+      "borderline": false
+    },
+    {
+      "id": "sam-rivera--ai-tooling-engineer",
+      "candidate": "sam-rivera",
+      "job": "ai-tooling-engineer",
+      "verdict": "Fit",
+      "rationale": "Built RAG over runbooks, an MCP server for doc search and a 120-ticket eval set.",
+      "borderline": false
+    },
+    {
+      "id": "sam-rivera--senior-ios",
+      "candidate": "sam-rivera",
+      "job": "senior-ios",
+      "verdict": "Not a fit",
+      "rationale": "No Swift, UIKit, Core Data or mobile profiling in the notes.",
+      "borderline": false
+    },
+    {
+      "id": "sam-rivera--frontend-react",
+      "candidate": "sam-rivera",
+      "job": "frontend-react",
+      "verdict": "Not a fit",
+      "rationale": "TypeScript is listed, but no React, design system or accessibility work.",
+      "borderline": false
+    },
+    {
+      "id": "sam-rivera--senior-data-engineer",
+      "candidate": "sam-rivera",
+      "job": "senior-data-engineer",
+      "verdict": "Not a fit",
+      "rationale": "Python, SQS and AWS, but no Kafka, Spark, Airflow, dbt or Snowflake.",
+      "borderline": true
+    },
+    {
+      "id": "sam-rivera--staff-platform-k8s",
+      "candidate": "sam-rivera",
+      "job": "staff-platform-k8s",
+      "verdict": "Not a fit",
+      "rationale": "Strong Terraform and CI/CD, but the notes show ECS, not Kubernetes, Helm or operators.",
+      "borderline": true
+    },
+    {
+      "id": "sam-rivera--ml-engineer",
+      "candidate": "sam-rivera",
+      "job": "ml-engineer",
+      "verdict": "Not a fit",
+      "rationale": "LLM evals and RAG, but no model training, model serving or experiment tracking.",
+      "borderline": true
+    },
+    {
+      "id": "sam-rivera--data-platform-aws",
+      "candidate": "sam-rivera",
+      "job": "data-platform-aws",
+      "verdict": "Not a fit",
+      "rationale": "AWS, Terraform and Python fit, but no EMR, Glue, Kafka or Kinesis.",
+      "borderline": true
+    },
+    {
+      "id": "jordan-lee--senior-ios",
+      "candidate": "jordan-lee",
+      "job": "senior-ios",
+      "verdict": "Fit",
+      "rationale": "Ships in Swift with SwiftUI and UIKit, built on Core Data and profiled launch with Instruments.",
+      "borderline": false
+    },
+    {
+      "id": "jordan-lee--staff-ios-performance",
+      "candidate": "jordan-lee",
+      "job": "staff-ios-performance",
+      "verdict": "Fit",
+      "rationale": "Launch time 3.1s to 1.2s with Instruments, offline maps on Core Data, App Store release owner, mentored two engineers.",
+      "borderline": false
+    },
+    {
+      "id": "jordan-lee--android-engineer",
+      "candidate": "jordan-lee",
+      "job": "android-engineer",
+      "verdict": "Not a fit",
+      "rationale": "Read and reviewed Kotlin while pairing, but never shipped an Android app, Compose screens or Play releases.",
+      "borderline": true
+    },
+    {
+      "id": "jordan-lee--mobile-eng-manager",
+      "candidate": "jordan-lee",
+      "job": "mobile-eng-manager",
+      "verdict": "Not a fit",
+      "rationale": "Mentored juniors but was never a people manager, hiring lead or performance reviewer.",
+      "borderline": true
+    },
+    {
+      "id": "jordan-lee--principal-backend-go",
+      "candidate": "jordan-lee",
+      "job": "principal-backend-go",
+      "verdict": "Not a fit",
+      "rationale": "A mobile engineer with no Go, AWS backend services or backend migrations.",
+      "borderline": false
+    },
+    {
+      "id": "jordan-lee--frontend-react",
+      "candidate": "jordan-lee",
+      "job": "frontend-react",
+      "verdict": "Not a fit",
+      "rationale": "No React, web design system or web accessibility work.",
+      "borderline": false
+    },
+    {
+      "id": "jordan-lee--senior-data-engineer",
+      "candidate": "jordan-lee",
+      "job": "senior-data-engineer",
+      "verdict": "Not a fit",
+      "rationale": "No Kafka, Spark, Airflow, dbt or warehouse work.",
+      "borderline": false
+    },
+    {
+      "id": "jordan-lee--ai-tooling-engineer",
+      "candidate": "jordan-lee",
+      "job": "ai-tooling-engineer",
+      "verdict": "Not a fit",
+      "rationale": "No RAG, MCP or LLM eval work.",
+      "borderline": false
+    },
+    {
+      "id": "casey-nguyen--senior-data-engineer",
+      "candidate": "casey-nguyen",
+      "job": "senior-data-engineer",
+      "verdict": "Fit",
+      "rationale": "Kafka and Spark streaming, 180 Airflow DAGs, dbt on Snowflake and dbt data quality tests.",
+      "borderline": false
+    },
+    {
+      "id": "casey-nguyen--data-platform-aws",
+      "candidate": "casey-nguyen",
+      "job": "data-platform-aws",
+      "verdict": "Fit",
+      "rationale": "Spark on EMR, Kafka and Kinesis, Terraform for EMR, S3 and IAM, and Python throughout.",
+      "borderline": false
+    },
+    {
+      "id": "casey-nguyen--analytics-engineer",
+      "candidate": "casey-nguyen",
+      "job": "analytics-engineer",
+      "verdict": "Fit",
+      "rationale": "Incremental dbt models with tests on Snowflake, Looker dashboards and a SQL and dbt course for analysts.",
+      "borderline": false
+    },
+    {
+      "id": "casey-nguyen--backend-python-payments",
+      "candidate": "casey-nguyen",
+      "job": "backend-python-payments",
+      "verdict": "Not a fit",
+      "rationale": "Python and SQL, but pipelines rather than FastAPI services, and no payments or reconciliation.",
+      "borderline": true
+    },
+    {
+      "id": "casey-nguyen--ml-engineer",
+      "candidate": "casey-nguyen",
+      "job": "ml-engineer",
+      "verdict": "Not a fit",
+      "rationale": "Builds the pipelines features would come from, but no model training, serving or experiment tracking.",
+      "borderline": true
+    },
+    {
+      "id": "casey-nguyen--principal-backend-go",
+      "candidate": "casey-nguyen",
+      "job": "principal-backend-go",
+      "verdict": "Not a fit",
+      "rationale": "Python data pipelines on AWS, but no Go, backend services or service reliability work.",
+      "borderline": true
+    },
+    {
+      "id": "casey-nguyen--senior-ios",
+      "candidate": "casey-nguyen",
+      "job": "senior-ios",
+      "verdict": "Not a fit",
+      "rationale": "No iOS, Swift or mobile work.",
+      "borderline": false
+    }
+  ]
+}
