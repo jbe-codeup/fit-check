@@ -1,0 +1,70 @@
+{
+  "fit": {
+    "label": "Job 1",
+    "title": "Principal Backend Engineer",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for this demo, not a real posting.",
+    "description": "Sample Co. is hiring a Principal Backend Engineer to own the design and reliability of our core platform. You will build high-throughput services in Go and Python on AWS (Lambda, ECS, S3), lead migrations with no downtime, raise the reliability of our CI/CD and data pipelines, lead projects across teams and mentor engineers. Hands-on experience building LLM tooling (MCP servers, RAG, evals) is a plus.",
+    "questions": [
+      {
+        "q": "Which languages does the candidate use for backend services, and have they shipped Go in production?",
+        "requirement": "Go and Python backend services",
+        "must": true
+      },
+      {
+        "q": "Has the candidate designed or migrated services on AWS, like Lambda or ECS?",
+        "requirement": "AWS service design and migrations",
+        "must": true
+      },
+      {
+        "q": "How has the candidate improved the reliability of a production pipeline?",
+        "requirement": "Production reliability and CI/CD",
+        "must": true
+      },
+      {
+        "q": "Has the candidate led cross-team projects or mentored engineers?",
+        "requirement": "Technical leadership and mentoring",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built AI tooling with LLMs, MCP or RAG?",
+        "requirement": "LLM tooling (MCP, RAG, evals)",
+        "must": false
+      }
+    ]
+  },
+  "notfit": {
+    "label": "Job 2",
+    "title": "Senior iOS Engineer",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for this demo, not a real posting.",
+    "description": "Sample Co. is hiring a Senior iOS Engineer to build our consumer iPhone app. You will ship features in Swift and SwiftUI, work deep in Xcode, UIKit and Core Data, profile and tune app performance with Instruments, and own App Store releases. Android experience with Kotlin and Jetpack Compose is a plus, as is mentoring other engineers.",
+    "questions": [
+      {
+        "q": "Has the candidate shipped native iOS apps in Swift or SwiftUI?",
+        "requirement": "Native iOS in Swift / SwiftUI",
+        "must": true
+      },
+      {
+        "q": "Has the candidate worked with Xcode, UIKit or Core Data?",
+        "requirement": "Xcode, UIKit, Core Data",
+        "must": true
+      },
+      {
+        "q": "Has the candidate done mobile performance profiling with Instruments?",
+        "requirement": "Mobile performance profiling",
+        "must": true
+      },
+      {
+        "q": "Does the candidate have experience with Kotlin and Jetpack Compose?",
+        "requirement": "Android with Kotlin / Compose",
+        "must": false
+      },
+      {
+        "q": "Has the candidate mentored other engineers?",
+        "requirement": "Mentoring",
+        "must": false
+      }
+    ]
+  }
+}

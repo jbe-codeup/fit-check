@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fitcheck · agent-to-agent job fit</title>
+<style>
+  :root {
+    --bg: #0a0e16; --panel: #111725; --panel2: #161e2f; --line: #222c40; --text: #e6eaf2; --muted: #8b97ad;
+    --rec: #8b9cff; --rec-bg: #1a2042; --cand: #34d3b4; --cand-bg: #0f2a2a;
+    --fit: #22c55e; --fit-bg: #0d2a1a; --nofit: #f59e0b; --nofit-bg: #2e2109; --bad: #f87171;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--text); font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 14px; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  .logo { width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, var(--rec), var(--cand)); display: grid; place-items: center; font-weight: 800; color: #0a0e16; }
+  header h1 { font-size: 18px; margin: 0; letter-spacing: .2px; }
+  header .sub { color: var(--muted); font-size: 13px; }
+  .pill { margin-left: auto; font-size: 12px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+  .pill.live { color: var(--cand); border-color: #1d5a50; }
+  .wrap { display: grid; grid-template-columns: 360px 1fr; height: calc(100% - 67px); }
+  aside { border-right: 1px solid var(--line); padding: 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+  .jobs { display: grid; gap: 10px; }
+  .job { text-align: left; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--text); cursor: pointer; font: inherit; transition: border-color .15s, background .15s; }
+  .job:hover { border-color: #33405c; }
+  .job.active { border-color: var(--rec); background: var(--rec-bg); }
+  .job .k { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .job .t { font-weight: 650; margin-top: 2px; }
+  .job .go { float: right; font-size: 12px; color: var(--rec); margin-top: 2px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+  .card h3 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 600; }
+  .jd-title { font-weight: 650; font-size: 16px; }
+  .sample { display: inline-block; font-size: 11px; color: var(--nofit); border: 1px solid #5a4214; border-radius: 6px; padding: 1px 6px; margin: 4px 0 8px; }
+  .jd-text { color: #c5cddb; font-size: 13px; }
+  .reqs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .reqs li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; align-items: start; font-size: 13.5px; }
+  .mark { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line); display: grid; place-items: center; font-size: 12px; font-weight: 700; margin-top: 1px; }
+  .mark.ok { background: var(--fit); border-color: var(--fit); color: #04130a; }
+  .mark.no { background: transparent; border-color: var(--nofit); color: var(--nofit); }
+  .mark.ask { border-color: var(--rec); animation: pulse 1s infinite; }
+  .tag { font-size: 10.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; margin-left: 6px; }
+  .tag.must { color: var(--rec); border-color: #343d78; }
+  .wire { font-family: var(--mono); font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
+  .wire b { color: var(--text); font-weight: 600; }
+  main { display: flex; flex-direction: column; min-height: 0; }
+  .agents { display: flex; justify-content: space-between; padding: 14px 28px; border-bottom: 1px solid var(--line); background: #0c111b; }
+  .agent { display: flex; align-items: center; gap: 10px; }
+  .agent .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; }
+  .agent.rec .av { background: var(--rec-bg); color: var(--rec); border: 1px solid #343d78; }
+  .agent.cand .av { background: var(--cand-bg); color: var(--cand); border: 1px solid #1d5a50; }
+  .agent .n { font-weight: 650; }
+  .agent .d { font-size: 12px; color: var(--muted); }
+  .agent.cand { flex-direction: row-reverse; text-align: right; }
+  .link { color: var(--muted); font-size: 12px; text-decoration: none; border-bottom: 1px dashed var(--line); cursor: pointer; }
+  #chat { flex: 1; overflow-y: auto; padding: 22px 28px 40px; display: flex; flex-direction: column; gap: 14px; scroll-behavior: smooth; }
+  .empty { margin: auto; text-align: center; color: var(--muted); max-width: 420px; }
+  .empty .big { font-size: 22px; color: var(--text); font-weight: 650; margin-bottom: 6px; }
+  .msg { max-width: 72%; display: flex; flex-direction: column; gap: 6px; animation: rise .25s ease-out; }
+  .msg.rec { align-self: flex-start; }
+  .msg.cand { align-self: flex-end; align-items: flex-end; }
+  .who { font-size: 12px; color: var(--muted); }
+  .bubble { padding: 11px 14px; border-radius: 14px; font-size: 15px; }
+  .rec .bubble { background: var(--rec-bg); border: 1px solid #2c3468; border-top-left-radius: 4px; }
+  .cand .bubble { background: var(--cand-bg); border: 1px solid #1b4b44; border-top-right-radius: 4px; }
+  .cand.idk .bubble { background: #1b1a12; border-color: #4a3e17; color: #e9dfc0; }
+  .meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: flex-end; }
+  .rec .meta { justify-content: flex-start; }
+  .cite { font-size: 12px; color: #a7f3e4; background: #0c2221; border: 1px solid #1b4b44; border-radius: 7px; padding: 2px 8px; display: inline-flex; gap: 6px; align-items: center; }
+  .cite svg { flex: none; }
+  .rpc { font-family: var(--mono); font-size: 11px; color: var(--muted); border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 2px 7px; cursor: pointer; }
+  .rpc:hover { color: var(--text); }
+  pre.raw { display: none; margin: 0; max-width: 100%; font: 11.5px/1.45 var(--mono); color: #b9c3d6; background: #0b1020; border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
+  pre.raw.open { display: block; }
+  .status-idk { font-size: 11px; color: var(--nofit); border: 1px solid #5a4214; border-radius: 6px; padding: 1px 7px; }
+  .typing { display: inline-flex; gap: 4px; padding: 12px 14px; }
+  .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
+  .typing i:nth-child(2) { animation-delay: .2s; } .typing i:nth-child(3) { animation-delay: .4s; }
+  .verdict { align-self: stretch; margin-top: 10px; border-radius: 16px; padding: 22px 24px; animation: rise .35s ease-out; }
+  .verdict.fit { background: var(--fit-bg); border: 1px solid #1f6b3d; }
+  .verdict.nofit { background: var(--nofit-bg); border: 1px solid #6b4e14; }
+  .verdict .label { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
+  .verdict .v { font-size: 38px; font-weight: 800; letter-spacing: -.5px; margin: 2px 0 6px; }
+  .verdict.fit .v { color: var(--fit); } .verdict.nofit .v { color: var(--nofit); }
+  .verdict .s { font-size: 16px; color: #dfe5ef; }
+  .verdict .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 14px; font-size: 13.5px; }
+  .verdict .cols h4 { margin: 0 0 4px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
+  .verdict ul { margin: 0; padding-left: 18px; }
+  .err { color: var(--bad); font-family: var(--mono); font-size: 13px; }
+  footer { font-size: 11.5px; color: var(--muted); padding: 0 2px; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+  @keyframes pulse { 50% { box-shadow: 0 0 0 4px rgba(139,156,255,.15); } }
+  @media (max-width: 900px) { .wrap { grid-template-columns: 1fr; height: auto; } aside { border-right: 0; border-bottom: 1px solid var(--line); } .msg { max-width: 92%; } }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">f</div>
+  <div>
+    <h1>fitcheck</h1>
+    <div class="sub">A recruiter's agent checks job fit with a candidate's AI representative, over A2A</div>
+  </div>
+  <span class="pill" id="mode">…</span>
+</header>
+<div class="wrap">
+  <aside>
+    <div class="jobs" id="jobs"></div>
+    <div class="card" id="jd" hidden>
+      <h3>Job description</h3>
+      <div class="jd-title" id="jd-title"></div>
+      <div class="sample" id="jd-sample"></div>
+      <div class="jd-text" id="jd-text"></div>
+    </div>
+    <div class="card" id="req-card" hidden>
+      <h3>Requirements checked</h3>
+      <ul class="reqs" id="reqs"></ul>
+    </div>
+    <div class="card">
+      <h3>Wire</h3>
+      <div class="wire">
+        <div>protocol <b>A2A · JSON-RPC</b></div>
+        <div>method <b>message/send</b></div>
+        <div>agent <b id="agent-url">-</b></div>
+        <div>messages <b id="count">0</b> · last <b id="lat">-</b></div>
+      </div>
+    </div>
+    <footer>Both jobs are sample descriptions written for this demo. The candidate agent answers only from the candidate's own notes and cites them; when the notes don't cover something it says "I don't know".</footer>
+  </aside>
+  <main>
+    <div class="agents">
+      <div class="agent rec"><div class="av">R</div><div><div class="n">Recruiter Agent</div><div class="d" id="rec-mode">screens candidates for a job</div></div></div>
+      <div class="agent cand"><div class="av" id="cand-av">C</div><div><div class="n">Candidate Agent</div><div class="d"><span id="cand-desc">the candidate's AI representative</span> · <a class="link" id="card-link">agent card</a></div></div></div>
+    </div>
+    <div id="chat">
+      <div class="empty"><div class="big">Pick a job to start the interview</div>The recruiter agent discovers the candidate agent's card, asks its questions over A2A, then gives a verdict. Press 1 or 2.</div>
+    </div>
+  </main>
+</div>
+<script>
+const $ = (s) => document.querySelector(s);
+const chat = $("#chat");
+let candName = "Candidate", jobs = {}, es = null, count = 0, card = null, typingEl = null;
+const DOC = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+fetch("/api/jobs").then((r) => r.json()).then((d) => {
+  jobs = d.jobs;
+  const live = d.mode.startsWith("Live");
+  $("#mode").textContent = d.mode; $("#mode").classList.toggle("live", live);
+  $("#agent-url").textContent = d.agent.replace(/^https?:\/\//, "");
+  const c = d.candidate || {};
+  candName = c.name || "Candidate";
+  $("#cand-av").textContent = candName.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  $("#cand-desc").textContent = `${candName}'s AI representative` + (c.fictional ? " (fictional sample)" : "");
+  $("#jobs").innerHTML = Object.entries(jobs).map(([id, j]) =>
+    `<button class="job" data-id="${id}"><span class="go">Run ▸</span><div class="k">${esc(j.label)} · sample</div><div class="t">${esc(j.title)}</div></button>`).join("");
+  document.querySelectorAll(".job").forEach((b) => b.onclick = () => run(b.dataset.id));
+});
+document.addEventListener("keydown", (e) => { const ids = Object.keys(jobs); const n = +e.key; if (n >= 1 && n <= ids.length) run(ids[n - 1]); });
+$("#card-link").onclick = () => { if (!card) return; addRaw(chat, "Agent card · GET /.well-known/agent-card.json", card, true); scroll(); };
+
+function scroll() { chat.scrollTop = chat.scrollHeight; }
+function typing(on, who) {
+  if (typingEl) { typingEl.remove(); typingEl = null; }
+  if (!on) return;
+  typingEl = document.createElement("div");
+  typingEl.className = "msg " + who;
+  typingEl.innerHTML = `<div class="bubble typing"><i></i><i></i><i></i></div>`;
+  chat.appendChild(typingEl); scroll();
+}
+function addRaw(parent, title, obj, open) {
+  const box = document.createElement("div"); box.className = "meta";
+  const btn = document.createElement("span"); btn.className = "rpc"; btn.textContent = "{ } " + title;
+  const pre = document.createElement("pre"); pre.className = "raw" + (open ? " open" : ""); pre.textContent = JSON.stringify(obj, null, 2);
+  btn.onclick = () => pre.classList.toggle("open");
+  box.appendChild(btn); parent.appendChild(box); parent.appendChild(pre);
+}
+function typeInto(el, text) {
+  return new Promise((done) => {
+    const step = Math.max(2, Math.ceil(text.length / 70)); let i = 0;
+    const t = setInterval(() => { i += step; el.textContent = text.slice(0, i); scroll(); if (i >= text.length) { clearInterval(t); done(); } }, 16);
+  });
+}
+// Events can arrive faster than the typing animation; play them in order.
+let queue = Promise.resolve();
+const play = (fn) => { queue = queue.then(fn).catch((e) => console.error(e)); };
+
+function run(id) {
+  if (es) es.close();
+  queue = Promise.resolve();
+  count = 0; $("#count").textContent = 0; $("#lat").textContent = "-";
+  document.querySelectorAll(".job").forEach((b) => b.classList.toggle("active", b.dataset.id === id));
+  chat.innerHTML = ""; typing(false);
+  const reqs = $("#reqs"); reqs.innerHTML = "";
+  const replay = new URLSearchParams(location.search).get("replay") === "1" ? "&replay=1" : "";
+  es = new EventSource("/api/run?job=" + encodeURIComponent(id) + replay);
+  es.onmessage = (m) => { const ev = JSON.parse(m.data); play(() => handle(ev)); };
+  es.onerror = () => { es.close(); };
+}
+
+async function handle(ev) {
+  if (ev.type === "start") {
+    $("#jd").hidden = false; $("#req-card").hidden = false;
+    $("#jd-title").textContent = `${ev.job.title} · ${ev.job.company}`;
+    $("#jd-sample").textContent = ev.job.sample_note;
+    $("#jd-text").textContent = ev.job.description;
+    $("#rec-mode").textContent = ev.recruiter_mode === "scripted, no key" ? "scripted questions, rule-based verdict" : ev.recruiter_mode;
+    if (ev.replay) $("#mode").textContent = "Replay of a recorded live run";
+  } else if (ev.type === "card") {
+    card = ev.card;
+    const sys = document.createElement("div"); sys.className = "who"; sys.style.alignSelf = "center";
+    sys.textContent = `Recruiter Agent discovered "${ev.card.name}" via its A2A agent card (skill: ${ev.card.skills[0].name})`;
+    chat.appendChild(sys);
+  } else if (ev.type === "thinking") {
+    typing(true, ev.who === "candidate" ? "cand" : "rec");
+  } else if (ev.type === "plan") {
+    typing(false);
+    $("#reqs").innerHTML = ev.questions.map((q, i) =>
+      `<li id="req-${i}"><span class="mark"></span><span>${esc(q.requirement)}<span class="tag ${q.must ? "must" : ""}">${q.must ? "must-have" : "nice-to-have"}</span></span></li>`).join("");
+  } else if (ev.type === "question") {
+    typing(false);
+    document.querySelector(`#req-${ev.i} .mark`)?.classList.add("ask");
+    const m = document.createElement("div"); m.className = "msg rec";
+    m.innerHTML = `<div class="who">Recruiter Agent → Candidate Agent</div><div class="bubble"></div>`;
+    chat.appendChild(m); scroll();
+    await typeInto(m.querySelector(".bubble"), ev.text);
+    addRaw(m, "A2A request", ev.rpc, false);
+    count++; $("#count").textContent = count;
+  } else if (ev.type === "answer") {
+    typing(false);
+    const idk = ev.status !== "answered";
+    const m = document.createElement("div"); m.className = "msg cand" + (idk ? " idk" : "");
+    m.innerHTML = `<div class="who">${esc(candName)}'s agent${ev.mode === "claude" ? " · Claude " + esc(ev.model || "") : ""}</div><div class="bubble"></div>`;
+    chat.appendChild(m); scroll();
+    await typeInto(m.querySelector(".bubble"), ev.text);
+    const meta = document.createElement("div"); meta.className = "meta";
+    const seen = new Set();
+    (ev.citations || []).forEach((c) => {
+      if (seen.has(c.note)) return; seen.add(c.note);
+      const sec = String(c.section || "").split(" > ").pop();
+      meta.insertAdjacentHTML("beforeend", `<span class="cite" title="${esc(c.section)}">${DOC}${esc(c.note)}${sec && sec !== c.note ? " › " + esc(sec) : ""}</span>`);
+    });
+    if (idk) meta.insertAdjacentHTML("beforeend", `<span class="status-idk">no evidence in notes</span>`);
+    m.appendChild(meta);
+    addRaw(m, `A2A response · ${ev.ms} ms`, ev.rpc, false);
+    $("#lat").textContent = ev.ms + " ms";
+    const mark = document.querySelector(`#req-${ev.i} .mark`);
+    if (mark) { mark.classList.remove("ask"); mark.classList.add(idk ? "no" : "ok"); mark.textContent = idk ? "–" : "✓"; }
+    scroll();
+  } else if (ev.type === "verdict") {
+    typing(false);
+    const fit = ev.verdict === "Fit";
+    const v = document.createElement("div"); v.className = "verdict " + (fit ? "fit" : "nofit");
+    const li = (xs) => (xs || []).map((x) => `<li>${esc(x)}</li>`).join("") || "<li>none</li>";
+    v.innerHTML = `<div class="label">Recruiter Agent's verdict</div><div class="v">Verdict: ${fit ? "Fit" : "Not a fit"}</div>
+      <div class="s">${esc(ev.summary)}</div>
+      <div class="cols"><div><h4>Backed by cited notes</h4><ul>${li(ev.matched)}</ul></div><div><h4>No evidence in notes</h4><ul>${li(ev.gaps)}</ul></div></div>`;
+    chat.appendChild(v); scroll();
+  } else if (ev.type === "error") {
+    typing(false);
+    chat.insertAdjacentHTML("beforeend", `<div class="err">${esc(ev.message)}</div>`);
+  } else if (ev.type === "done") {
+    es && es.close();
+  }
+}
+</script>
+</body>
+</html>

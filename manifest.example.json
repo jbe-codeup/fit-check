@@ -1,0 +1,38 @@
+{
+  "_about": "Copy to private/manifest.json (gitignored) and list the notes the candidate agent may answer from. `python -m fitcheck prep --vault <vault>` copies only these into private/notes/.",
+  "notes": [
+    {
+      "path": "Career/Stories/A migration I led.md",
+      "name": "Migration story"
+    },
+    {
+      "path": "Career/Stories/Mentoring.md",
+      "name": "Mentoring"
+    }
+  ],
+  "manual_notes": [
+    {
+      "path": "private/manual/Resume.md",
+      "name": "Resume"
+    }
+  ],
+  "drop_sections": [
+    "^cheat sheet",
+    "^before using"
+  ],
+  "drop_lines": [
+    "^\\s*-?\\s*\\[?fill"
+  ],
+  "replace": [
+    [
+      "Internal Codename",
+      "our internal system"
+    ]
+  ],
+  "candidate": {
+    "name": "Your Name",
+    "pronoun": "they",
+    "role": "backend engineer",
+    "contact": "reach out to Your Name on LinkedIn"
+  }
+}

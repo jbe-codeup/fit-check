@@ -1,0 +1,3 @@
+# Retrieval, evals, the A2A agent and the no-key demo use only the Python standard library (3.10+).
+# Needed only for live answers and the live recruiter (ANTHROPIC_API_KEY set):
+anthropic>=0.70

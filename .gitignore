@@ -1,0 +1,13 @@
+# Your real notes, manifest, eval set and anything built from them stay local.
+private/
+build/
+*.log
+
+# Secrets
+.env
+.env.*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
