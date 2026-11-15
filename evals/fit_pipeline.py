@@ -93,7 +93,7 @@ class AgentPool:
                "FITCHECK_RATE_LIMIT": "100000",
                "LANGSMITH_TRACING": "false"}
         if not self.live:
-            env.pop("ANTHROPIC_API_KEY", None)
+            env["ANTHROPIC_API_KEY"] = ""  # empty, so .env cannot fill it back in
         port = _free_port()
         proc = subprocess.Popen([sys.executable, "-m", "fitcheck", "serve", "--port", str(port)], cwd=ROOT, env=env,
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

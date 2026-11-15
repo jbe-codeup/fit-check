@@ -17,6 +17,29 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def load_dotenv(*files: Path) -> None:
+    """Load KEY=value lines from .env files into os.environ. Variables already set in
+    the shell win, and the first file that sets a key wins. No dependency needed."""
+    for f in files:
+        if not f.is_file():
+            continue
+        for line in f.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.removeprefix("export ").split("=", 1)
+            key, value = key.strip(), value.strip()
+            if value[:1] in "\"'" and value[-1:] == value[:1] and len(value) > 1:
+                value = value[1:-1]
+            elif " #" in value:
+                value = value.split(" #", 1)[0].rstrip()
+            if key and value and key not in os.environ:
+                os.environ[key] = value
+
+
+load_dotenv(ROOT / ".env", ROOT / "demo" / ".env")
+
+
 def _path(value: str | Path) -> Path:
     p = Path(value).expanduser()
     return p if p.is_absolute() else ROOT / p
