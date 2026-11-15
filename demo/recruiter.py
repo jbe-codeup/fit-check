@@ -226,11 +226,16 @@ def judge(job: dict, turns: list[dict], live: bool) -> dict:
 
 
 # ---------------------------------------------------------------- the interview
-def interview(job_id: str, url: str, live: bool | None = None, pace: float = 1.0) -> Iterator[dict]:
-    """Yield UI events for one interview. pace=0 for no pauses."""
+def interview(job_id: str | dict, url: str, live: bool | None = None, pace: float = 1.0) -> Iterator[dict]:
+    """Yield UI events for one interview. pace=0 for no pauses.
+
+    job_id is a key of demo/jobs.json, or a job dict with the same fields
+    (title, description, questions); the evals pass their own sample jobs this way."""
     if live is None:
         live = bool(os.environ.get("ANTHROPIC_API_KEY"))
-    job = JOBS[job_id]
+    job = JOBS[job_id] if isinstance(job_id, str) else job_id
+    if not isinstance(job_id, str):
+        job_id = job.get("id", "custom")
     a2a = A2AClient(url)
 
     def wait(s):
@@ -238,7 +243,7 @@ def interview(job_id: str, url: str, live: bool | None = None, pace: float = 1.0
             time.sleep(s * pace)
 
     card = a2a.card()
-    yield {"type": "start", "job": {k: job[k] for k in ("label", "title", "company", "sample_note", "description")},
+    yield {"type": "start", "job": {k: job.get(k, "") for k in ("label", "title", "company", "sample_note", "description")},
            "job_id": job_id, "recruiter_mode": f"Claude {MODEL}" if live else "scripted, no key"}
     yield {"type": "card", "card": card, "url": url}
     wait(0.8)

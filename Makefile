@@ -3,7 +3,7 @@ PY ?= python3
 NOTES ?= sample_notes
 export FITCHECK_NOTES = $(NOTES)
 
-.PHONY: demo demo-cli serve ingest eval eval-live test
+.PHONY: demo demo-cli serve ingest eval eval-live eval-fit eval-dataset eval-experiment test
 
 demo:            ## open the two-job interview page (no key = mock mode)
 	$(PY) -m fitcheck demo
@@ -22,6 +22,15 @@ eval:            ## retrieval evals, no key needed
 
 eval-live:       ## also run answer generation (uses ANTHROPIC_API_KEY)
 	$(PY) -m fitcheck eval --generate
+
+eval-fit:        ## fit-verdict evals on 25 labelled pairs, locally (mock mode without a key)
+	$(PY) -m evals.langsmith_experiment --dry-run $(ARGS)
+
+eval-dataset:    ## upload evals/fit/pairs.json to LangSmith (LANGSMITH_API_KEY); safe to re-run
+	$(PY) -m evals.langsmith_dataset $(ARGS)
+
+eval-experiment: ## run the fit-verdict experiment in LangSmith, e.g. ARGS="--model claude-sonnet-5-5"
+	$(PY) -m evals.langsmith_experiment $(ARGS)
 
 test:            ## offline unit tests (always use the sample notes)
 	FITCHECK_NOTES=sample_notes $(PY) -m unittest discover -s tests -t .
