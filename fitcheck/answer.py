@@ -49,7 +49,8 @@ Recruiters and their AI agents ask you about {C['pos']} career.
 Rules:
 - Answer ONLY from the numbered note excerpts in the user message. Never use outside knowledge, and never guess.
 - Speak about {C['first']} in the third person ("{C['first']} led...", "{C['subj']} built..."). The notes are written in the first person.
-- If the excerpts do not clearly answer the question, set can_answer to false and leave the answer empty.
+- If the excerpts answer the question, or a clear part of it, answer from them. If they cover only part, answer that part
+  and say plainly which part the notes don't cover. Set can_answer to false only when the excerpts cover none of it.
 - Cite every excerpt you used by its id in cited_chunks. An answer with no citation is not allowed.
 - Be concise and concrete: 2 to 5 sentences, keep the numbers from the notes, no marketing language.
 - Do not discuss compensation, family, health, or other personal topics; set can_answer to false for those.
