@@ -109,6 +109,9 @@
   .verdict { align-self: stretch; margin-top: 10px; border-radius: 16px; padding: 22px 24px; animation: rise .35s ease-out; }
   .verdict.fit { background: var(--fit-bg); border: 1px solid #1f6b3d; }
   .verdict.nofit { background: var(--nofit-bg); border: 1px solid #6b4e14; }
+  .why { font-size: 13px; color: var(--muted); font-style: italic; margin: 0 0 6px; }
+  .msg.rec.read .bubble { font-style: italic; }
+  .flag.split { color: var(--nofit); border-color: #5a4214; }
   .verdict .label { font-size: 12px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); }
   .verdict .v { font-size: 38px; font-weight: 800; letter-spacing: -.5px; margin: 2px 0 6px; }
   .verdict.fit .v { color: var(--fit); } .verdict.nofit .v { color: var(--nofit); }
@@ -235,6 +238,7 @@ function typeInto(el, text) {
 }
 // Events can arrive faster than the typing animation; play them in order.
 let queue = Promise.resolve();
+let teamMode = false;
 const play = (fn) => { queue = queue.then(fn).catch((e) => console.error(e)); };
 
 function run(id) {
@@ -257,6 +261,7 @@ async function handle(ev) {
     $("#jd-sample").textContent = ev.job.sample_note;
     $("#jd-text").textContent = ev.job.description;
     if (ev.replay) $("#mode").textContent = "Replay of a recorded live run";
+    teamMode = !!ev.team;
   } else if (ev.type === "card") {
     card = ev.card;
     sysLine(`The panel discovered "${ev.card.name}" via its A2A agent card (skill: ${ev.card.skills[0].name})`);
@@ -269,15 +274,16 @@ async function handle(ev) {
       `<li id="req-${i}"><span class="mark"></span><span>${esc(q.requirement)}<span class="tag ${q.must ? "must" : ""}">${q.must ? "must-have" : "nice-to-have"}</span><span class="ev" id="ev-${i}"></span></span></li>`).join("");
     const musts = ev.questions.filter((q) => q.must).length;
     sysLine(`The panel built a shared scorecard from the job description: ${musts} must-haves, ${ev.questions.length - musts} nice-to-have${ev.questions.length - musts === 1 ? "" : "s"}`);
+    if (teamMode) sysLine("Before each question both agents read the transcript and propose a move; the most urgent one goes first");
     updateCount();
   } else if (ev.type === "question") {
     typing(false);
     if (!ev.followup) setMark(ev.i, "ask");
     const m = document.createElement("div"); m.className = "msg rec " + by(ev) + (ev.followup ? " followup" : "");
-    m.innerHTML = `<div class="who">${asker(ev)} → Candidate Agent${ev.followup ? " · follow-up" : ""}</div><div class="bubble"></div>`;
+    m.innerHTML = `<div class="who">${asker(ev)} → Candidate Agent${ev.followup ? " · follow-up" : ""}</div>${ev.why ? `<div class="why">${esc(ev.why)}</div>` : ""}<div class="bubble"></div>`;
     chat.appendChild(m); scroll();
     await typeInto(m.querySelector(".bubble"), ev.text);
-    if (ev.followup) m.insertAdjacentHTML("beforeend", `<div class="meta">${chip("probe", "probing for the measurable result")}</div>`);
+    if (ev.followup && !ev.why) m.insertAdjacentHTML("beforeend", `<div class="meta">${chip("probe", "probing for the measurable result")}</div>`);
     addRaw(m, "A2A request", ev.rpc, false);
     count++; $("#count").textContent = count;
   } else if (ev.type === "answer") {
@@ -307,6 +313,9 @@ async function handle(ev) {
     if (ev.thin) {
       setMark(ev.i, "probe", "?");
       thinNotes[ev.i] = [...new Set((ev.citations || []).map((c) => c.note))];
+    } else if (ev.followup && idk) {
+      // A follow-up with no evidence leaves the item as the first answer left it.
+      if (!met[ev.i] && evEl) { setMark(ev.i, "no", "–"); evEl.className = "ev gap"; evEl.textContent = "gap"; }
     } else if (ev.followup || !idk) {
       // A follow-up only adds depth: the item was already met by the first cited answer.
       setMark(ev.i, "ok", "✓"); met[ev.i] = true;
@@ -342,6 +351,14 @@ async function handle(ev) {
     m.insertAdjacentHTML("beforeend", `<div class="meta">${chip("facts", "answered from the job's own facts")}</div>`);
     addRaw(m, "A2A request · intent role_answer", ev.rpc, false);
     scroll();
+  } else if (ev.type === "panel_read") {
+    typing(false);
+    const m = document.createElement("div"); m.className = "msg rec read " + by(ev);
+    m.innerHTML = `<div class="who">${asker(ev)} → Panel · their read</div><div class="bubble"></div>`;
+    chat.appendChild(m); scroll();
+    await typeInto(m.querySelector(".bubble"), ev.text);
+    m.insertAdjacentHTML("beforeend", `<div class="meta">${chip(ev.verdict === "Fit" ? "facts" : "probe", ev.verdict)}</div>`);
+    scroll();
   } else if (ev.type === "verdict") {
     typing(false);
     const fit = ev.verdict === "Fit";
@@ -352,7 +369,8 @@ async function handle(ev) {
       const src = ok ? c.evidence.join(", ") + (c.probed ? " (probed)" : "") : "gap" + (c.nearest && c.nearest.length ? " · nearest: " + c.nearest.join(", ") : "");
       return `<div class="row"><span class="mark ${ok ? "ok" : "no"}">${ok ? "✓" : "–"}</span><span>${esc(c.requirement)}<span class="tag ${c.must ? "must" : ""}">${c.must ? "must-have" : "nice-to-have"}</span></span><span class="src ${ok ? "" : "gap"}">${esc(src)}</span></div>`;
     }).join("");
-    v.innerHTML = `<div class="label">The panel's verdict, from the shared scorecard</div><div class="v">Verdict: ${fit ? "Fit" : "Not a fit"}</div>
+    const label = ev.split ? "The panel split · the evidence decides" : (String(ev.by || "").startsWith("team") ? "The panel's joint verdict, from the shared scorecard" : "The panel's verdict, from the shared scorecard");
+    v.innerHTML = `<div class="label">${esc(label)}</div><div class="v">Verdict: ${fit ? "Fit" : "Not a fit"}</div>
       <div class="s">${esc(ev.summary)}</div>
       ${rows ? `<div class="score">${rows}</div>` : `<div class="cols"><div><h4>Backed by cited notes</h4><ul>${li(ev.matched)}</ul></div><div><h4>No evidence in notes</h4><ul>${li(ev.gaps)}</ul></div></div>`}`;
     chat.appendChild(v); scroll();

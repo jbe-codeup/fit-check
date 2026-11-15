@@ -3,7 +3,7 @@
 > Fictional sample note for the fitcheck demo.
 
 > Summary
-> "I rebuilt our shipment-tracking ingest pipeline as Go functions on AWS Lambda, fed by SQS and EventBridge, with state in DynamoDB. We cut over with zero downtime, cut p99 latency from 900 ms to 120 ms and lowered the monthly bill by about 35%."
+> "I designed and rebuilt our event-driven shipment-tracking pipeline on AWS Lambda: Go handlers for the hot path and Python functions for the carrier parsers, fed by SQS and EventBridge, with state in DynamoDB. We cut over with zero downtime, cut p99 latency from 900 ms to 120 ms and lowered the monthly bill by about 35%."
 
 ## Situation
 
@@ -17,11 +17,12 @@ The old ingest path was one large Python Lambda behind SQS. At peak it hit the a
 ## What I did
 
 - Owned the rebuild end to end: the design, the Terraform, the rollout plan and the on-call runbook.
+- Kept the carrier-specific parsers in Python as their own Lambda functions behind EventBridge, since the integrations team owned them, and wrote the Python replay and backfill tools.
 - Split the monolith function into small Go handlers on arm64, which brought cold starts under 100 ms, and gave each one its own SQS queue and reserved concurrency, so one noisy carrier couldn't starve the rest.
 - Made every handler idempotent: it records the event ID with a DynamoDB conditional write, so a retried message is acknowledged and skipped instead of applied twice.
-- Turned on partial batch responses, so one bad message goes to the dead-letter queue instead of failing the whole batch.
+- Handled failures and retries safely: turned on partial batch responses, so one bad (poison) message goes to the dead-letter queue instead of failing the whole batch, and retries back off exponentially with a capped number of attempts.
 - Added structured logs, CloudWatch metrics per carrier and X-Ray traces, with alarms on queue age and DLQ depth.
-- When p99 latency spiked under load during one carrier's burst, I traced the cause with X-Ray: the traces showed DynamoDB throttling on a single hot partition key, so I re-keyed by carrier and shipment and p99 dropped back to 120 ms.
+- Debugged a production problem under load: when p99 latency spiked during one carrier's burst, I traced the cause with X-Ray: the traces showed DynamoDB throttling on a single hot partition key, so I re-keyed by carrier and shipment and p99 dropped back to 120 ms.
 - Shifted traffic with weighted Lambda aliases (5%, 25%, 50%, 100%) and a one-command rollback.
 
 ## Result
@@ -30,6 +31,11 @@ The old ingest path was one large Python Lambda behind SQS. At peak it hit the a
 - Zero downtime and zero lost messages during the cutover.
 - p99 latency went from 900 ms to 120 ms.
 - Monthly cost dropped about 35% after right-sizing memory and removing idle provisioned concurrency.
+
+## On-call
+
+- Owned the pipeline in production for three years, on a weekly on-call rotation with five engineers.
+- After the alarms and runbook work, pages dropped from about 30 a month to 6.
 
 ## Scale
 

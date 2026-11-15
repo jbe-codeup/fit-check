@@ -3,7 +3,7 @@
 > Fictional sample note for the fitcheck demo.
 
 > Summary
-> "I led a three-team effort to version our public tracking API without breaking customers, and I mentored two junior engineers through it with weekly pairing. Both shipped major pieces, and one was promoted within the year."
+> "I led a project across three teams (tracking, billing and integrations) to version our public tracking API without breaking customers, and I mentored two junior engineers through it with weekly pairing. Both shipped major pieces, and one was promoted within the year."
 
 ## Situation
 

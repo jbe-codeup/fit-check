@@ -85,6 +85,11 @@ SYNONYMS = {
     "evaluate": ["eval", "evaluation"],
     "evaluation": ["eval"],
     "infrastructure": ["terraform", "aws"],
+    "debug": ["debugged", "traced", "cause", "x-ray"],
+    "debugg": ["debug", "traced", "cause", "x-ray"],  # "debugged" / "debugging" stem to "debugg"
+    "troubleshoot": ["debug", "traced", "cause"],
+    "led": ["lead", "leadership"],
+    "on-call": ["rotation", "pages", "runbook"],
 }
 
 
