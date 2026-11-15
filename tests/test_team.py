@@ -100,6 +100,28 @@ class TeamPanelTests(unittest.TestCase):
         self.assertEqual([e for e in ev if e["type"] == "verdict"][-1]["verdict"], "Fit")
 
 
+class ReadTests(unittest.TestCase):
+    turns = [{"q": "q", "requirement": "Ownership end to end", "must": True, "status": "answered", "answer": "a",
+              "citations": [{"note": "N", "section": "S", "chunk_id": "c"}]},
+             {"q": "q", "requirement": "LLM tooling", "must": False, "status": "idk", "answer": "", "citations": []}]
+
+    def reads_with(self, unmet):
+        with mock.patch.object(recruiter, "_claude", side_effect=lambda *a: {"unmet_must_haves": list(unmet), "read": "r"}):
+            return recruiter.panel_reads({"description": "JD"}, self.turns)
+
+    def test_both_agents_with_nothing_unmet_agree_fit(self):
+        v = recruiter.joint_verdict(self.reads_with([]), self.turns)
+        self.assertEqual((v["verdict"], v["split"]), ("Fit", False))
+
+    def test_a_missing_nice_to_have_does_not_sink_it(self):
+        self.assertEqual(recruiter.joint_verdict(self.reads_with(["LLM tooling"]), self.turns)["verdict"], "Fit")
+
+    def test_agreed_not_a_fit_names_the_must_have(self):
+        v = recruiter.joint_verdict(self.reads_with(["Ownership end to end"]), self.turns)
+        self.assertEqual(v["verdict"], "Not a fit")
+        self.assertIn("Ownership end to end", v["summary"])
+
+
 class FloorRuleTests(unittest.TestCase):
     rows = [{"asked": True, "followups": 0}, {"asked": False, "followups": 0}]
 

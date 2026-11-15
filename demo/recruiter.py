@@ -308,7 +308,9 @@ TEAM_COMMON = """You are one of two agents on a screening panel that is intervie
 The candidate agent represents a candidate and answers only from the candidate's own notes, with citations.
 Call the person "the candidate". Your teammate sees the same job, scorecard and transcript. Work as a team:
 don't repeat what has been answered, build on each other's questions, and leave topics in your teammate's area to them unless you have a sharp follow-up.
-Be fair and evidence-based: a requirement is met only if an answer with citations supports it. "I don't know" means no evidence in the notes, not a missing skill."""
+Ask about what the candidate has done, never hypotheticals like "how would you...", because the candidate agent answers only from the notes.
+Be fair and evidence-based: a requirement is met when a cited answer shows real hands-on experience with it; it doesn't need to match
+every word of the job description or be perfect. Nice-to-haves never decide the verdict. "I don't know" means no evidence in the notes, not a missing skill."""
 
 ROLE_SYSTEM = {
     "hm": TEAM_COMMON + """
@@ -336,13 +338,13 @@ MOVE_SCHEMA = {
     "additionalProperties": False,
 }
 
-READ_SCHEMA = {
+READ_SCHEMA = {  # each agent's verdict follows from the must-haves it names as unmet
     "type": "object",
     "properties": {
-        "verdict": {"type": "string", "enum": ["Fit", "Not a fit"]},
+        "unmet_must_haves": {"type": "array", "items": {"type": "string"}},
         "read": {"type": "string"},
     },
-    "required": ["verdict", "read"],
+    "required": ["unmet_must_haves", "read"],
     "additionalProperties": False,
 }
 
@@ -430,21 +432,33 @@ def panel_reads(job: dict, turns: list[dict]) -> dict:
         for t in turns
     )
     ask = (f"Job description:\n{job['description']}\n\nInterview transcript:\n{transcript}\n\n"
-           "Give your own read from your role. verdict: Fit only if every must-have is supported by a cited answer. "
-           "read: 1-2 sentences in the first person, as you'd say it to your teammate, naming the strongest evidence and your main concern.")
+           f"Must-haves: {json.dumps([t['requirement'] for t in turns if t['must']])}\n\n"
+           "Give your own read from your role. unmet_must_haves: the exact name of each must-have above that no cited answer supports; "
+           "empty if every one is supported (you think it's a Fit). "
+           "read: 1-2 sentences in the first person, as you'd say it to your teammate, naming the strongest evidence and your main concern; "
+           "it calls the candidate a fit exactly when unmet_must_haves is empty.")
     with ThreadPoolExecutor(max_workers=2) as pool:
         futs = {by: pool.submit(_claude, ROLE_SYSTEM[by], ask, READ_SCHEMA) for by in PANEL}
-        return {by: f.result() for by, f in futs.items()}
+        out = {}
+        for by, f in futs.items():
+            r = f.result()
+            unmet = match_unmet(r.get("unmet_must_haves", []), turns)
+            out[by] = {"verdict": "Not a fit" if unmet else "Fit", "read": r["read"], "unmet": unmet}
+        return out
 
 
 def joint_verdict(reads: dict, turns: list[dict]) -> dict:
-    """Agree a verdict, or flag a split. A Fit always needs cited evidence for every must-have."""
+    """Agree a verdict, or flag a split. A Fit always needs cited evidence for every must-have,
+    and a Not a fit always names the must-haves it found unsupported."""
     rule = rule_verdict(turns)
     hm, eng = reads["hm"]["verdict"], reads["eng"]["verdict"]
-    out = {**rule, "reads": {by: {"verdict": r["verdict"], "read": r["read"]} for by, r in reads.items()}}
-    if hm == eng and (hm == "Not a fit" or rule["verdict"] == "Fit"):
-        out.update(verdict=hm, by="team", split=False,
-                   summary=f"Both panel agents say {hm}. " + rule["summary"])
+    out = {**rule, "reads": {by: {"verdict": r["verdict"], "read": r["read"], "unmet": r.get("unmet", [])} for by, r in reads.items()}}
+    if hm == eng == rule["verdict"]:
+        out.update(by="team", split=False, summary=f"Both panel agents say {hm}. " + rule["summary"])
+    elif hm == eng == "Not a fit":  # every must-have has a cited answer, but both judge some of it too weak
+        unmet = list(dict.fromkeys(reads["hm"].get("unmet", []) + reads["eng"].get("unmet", [])))
+        out.update(verdict="Not a fit", by="team", split=False, gaps=unmet,
+                   summary="Both panel agents say Not a fit: the cited answers didn't show enough for " + ", ".join(unmet) + ".")
     elif hm == eng:
         out.update(by="team (evidence rule)", split=False,
                    summary=f"Both agents leaned {hm}, but a must-have has no cited evidence, so the panel can't call it a Fit. " + rule["summary"])
