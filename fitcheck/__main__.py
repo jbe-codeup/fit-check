@@ -17,6 +17,8 @@ def main(argv=None) -> int:
 
     sub.add_parser("ingest", help="split the notes by heading and build build/index.json")
 
+    sub.add_parser("check", help="check that ANTHROPIC_API_KEY, the model and the anthropic package work for live mode")
+
     s = sub.add_parser("ask", help="ask one question")
     s.add_argument("question")
     s.add_argument("--json", action="store_true")
@@ -57,6 +59,12 @@ def main(argv=None) -> int:
             print(r["answer"])
             for c in r["citations"]:
                 print(f"  source: {c['note']} > {c['section']}")
+    elif a.cmd == "check":
+        from . import llm
+
+        ok, line = llm.key_check()
+        print(line)
+        return 0 if ok else 1
     elif a.cmd == "eval":
         from evals.run_evals import run
 

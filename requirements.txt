@@ -1,5 +1,5 @@
 # Retrieval, evals, the A2A agent and the no-key demo use only the Python standard library (3.10+).
 # Needed only for live answers and the live recruiter (ANTHROPIC_API_KEY set):
-anthropic>=0.70
+anthropic>=0.77  # 0.77 added output_config (structured outputs), which every call uses
 # Needed only to upload the eval dataset and run experiments in LangSmith (make eval-dataset / eval-experiment):
 langsmith>=0.4

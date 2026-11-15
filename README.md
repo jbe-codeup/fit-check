@@ -31,10 +31,13 @@ make demo-cli      # the same two interviews in the terminal
 Live mode puts Claude on both sides: it writes the candidate agent's answers and the panel's questions and verdict.
 
 ```bash
-pip install -r requirements.txt
+pip install -U -r requirements.txt  # -U matters: anthropic 0.77+ is needed for structured outputs
 export ANTHROPIC_API_KEY=...        # your own key, in your own shell; never committed
+make check                          # one line: is the key accepted, is the model available, is the package new enough
 make demo
 ```
+
+`make demo` runs the same check when it starts. If a live call fails later, the real reason (error type, status and message, never the key) is printed in the terminal where the demo runs, while the page shows a generic reply.
 
 The model defaults to Claude Haiku (`claude-haiku-5-5`). Set `FITCHECK_MODEL` to change it.
 

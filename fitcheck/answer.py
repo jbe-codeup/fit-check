@@ -19,7 +19,7 @@ import os
 import re
 from functools import lru_cache
 
-from . import config
+from . import config, llm
 from .config import MODEL, THRESHOLD, TOP_K
 from .retrieval import Retriever, ensure_index
 
@@ -227,7 +227,7 @@ def _generate(question: str, hits: list[dict], client=None) -> dict:
     try:
         resp = client.messages.create(
             model=MODEL,
-            max_tokens=2000,
+            max_tokens=4000,
             system=SYSTEM,
             output_config={"effort": "low", "format": {"type": "json_schema", "schema": SCHEMA}},
             messages=[{"role": "user", "content": f"Note excerpts:\n\n{excerpts}\n\nQuestion: {question}"}],
@@ -236,11 +236,13 @@ def _generate(question: str, hits: list[dict], client=None) -> dict:
         return _api_error(e, hits)
 
     if resp.stop_reason == "refusal":
+        llm.log("candidate agent", "Claude declined to answer (stop_reason refusal); replying I don't know.")
         return _result("idk", IDK, hits=hits)
     text = next((b.text for b in resp.content if getattr(b, "type", "") == "text"), "")
     try:
         data = json.loads(text)
     except (json.JSONDecodeError, TypeError):
+        llm.log("candidate agent", f"Claude's reply wasn't valid JSON (stop_reason {resp.stop_reason}); replying I don't know.")
         return _result("idk", IDK, hits=hits)
 
     by_id = {h["id"]: h for h in hits}
@@ -251,6 +253,7 @@ def _generate(question: str, hits: list[dict], client=None) -> dict:
 
 
 def _api_error(e: Exception, hits: list[dict]) -> dict:
+    llm.log_error("candidate agent", e)  # the real reason goes to the terminal; the reply stays generic
     status = getattr(e, "status_code", None)
     etype = getattr(e, "type", "") or ""
     msg = str(e).lower()

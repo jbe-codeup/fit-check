@@ -35,6 +35,8 @@ import uuid
 from pathlib import Path
 from typing import Iterator
 
+from fitcheck import llm
+
 HERE = Path(__file__).resolve().parent
 JOBS = json.loads((HERE / "jobs.json").read_text(encoding="utf-8"))
 MODEL = os.environ.get("FITCHECK_MODEL", "claude-haiku-5-5")
@@ -135,13 +137,16 @@ def _claude(system: str, user: str, schema: dict) -> dict:
     client = anthropic.Anthropic()
     resp = client.messages.create(
         model=MODEL,
-        max_tokens=2000,
+        max_tokens=4000,
         system=system,
         output_config={"effort": "low", "format": {"type": "json_schema", "schema": schema}},
         messages=[{"role": "user", "content": user}],
     )
-    text = next(b.text for b in resp.content if getattr(b, "type", "") == "text")
-    return json.loads(text)
+    text = next((b.text for b in resp.content if getattr(b, "type", "") == "text"), "")
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        raise ValueError(f"reply wasn't valid JSON (stop_reason {resp.stop_reason})") from None
 
 
 QUESTION_SCHEMA = {
@@ -198,6 +203,7 @@ def plan_questions(job: dict, live: bool) -> tuple[list[dict], str]:
             if qs:
                 return qs, "claude"
         except Exception as e:  # fall back to the script, and say so
+            llm.log_error("recruiter, planning questions", e)
             return job["questions"], f"script (Claude unavailable: {type(e).__name__})"
     return job["questions"], "script"
 
@@ -245,6 +251,7 @@ def judge(job: dict, turns: list[dict], live: bool) -> dict:
             )
             return {**out, "scorecard": scorecard(turns), "by": "claude"}
         except Exception as e:
+            llm.log_error("recruiter, verdict", e)
             return {**rule_verdict(turns), "by": f"rule (Claude unavailable: {type(e).__name__})"}
     return rule_verdict(turns)
 
