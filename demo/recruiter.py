@@ -1,7 +1,7 @@
 """The interview panel: reads a job description, interviews the candidate agent over A2A, and gives a verdict.
 
-The panel is two agents: a Hiring Manager agent (ownership, impact, motivation) and a
-Senior Engineer agent (technical depth, scale, incidents; it probes thin answers). They
+The panel is two agents: a Hiring Manager agent (ownership, cross-team work, motivation, team fit) and a
+Senior Engineer agent (scale, performance, retries, observability; it probes thin answers). They
 share one scorecard and give one combined verdict. Each A2A request says which of them
 is asking in a data part ({"from": ...}).
 
@@ -11,7 +11,7 @@ JSON-RPC (`message/send`), the same way a third-party recruiting agent would.
 The interview:
   1. Scorecard: the job description becomes must-haves and nice-to-haves.
   2. One question per requirement. An item is met only by an answer with citations.
-  3. Follow-ups: a cited answer to a must-have with no numbers is thin, so the Senior Engineer
+  3. Follow-ups: a cited answer to a technical must-have with no numbers is thin, so the Senior Engineer
      agent probes once for the measurable result (at most MAX_PROBES per interview).
   4. Two-way: the candidate agent gets to ask one question about the role, answered
      from the job's own facts.
@@ -43,10 +43,10 @@ MAX_PROBES = int(os.environ.get("FITCHECK_MAX_PROBES", "1"))
 # The interviewing side is a two-agent panel. Both question the candidate agent over A2A,
 # share one scorecard and give one combined verdict.
 PANEL = {
-    "hm": {"name": "Hiring Manager Agent", "initials": "HM", "focus": "ownership, impact and motivation"},
-    "eng": {"name": "Senior Engineer Agent", "initials": "SE", "focus": "technical depth, scale and incidents; probes thin answers"},
+    "hm": {"name": "Hiring Manager Agent", "initials": "HM", "focus": "the role's owner: ownership, business impact, cross-team work, team fit"},
+    "eng": {"name": "Senior Engineer Agent", "initials": "SE", "focus": "Lambda depth: traffic, cold starts, retries, observability; probes thin answers"},
 }
-TECH = re.compile(r"scal|throughput|incident|outage|latency|architect|design|go\b|python|aws|kubernetes|ios|swift|profil|database|api", re.I)
+TECH = re.compile(r"lambda|cold start|concurren|retr|idempot|monitor|observab|alert|scal|throughput|incident|outage|latency|architect|design|go\b|python|aws|kubernetes|ios|swift|profil|database|api", re.I)
 
 
 def asker(item: dict) -> str:
@@ -174,8 +174,8 @@ VERDICT_SCHEMA = {
     "additionalProperties": False,
 }
 
-RECRUITER_SYSTEM = """You are a two-agent screening panel: a Hiring Manager agent (ownership, impact, motivation) and a
-Senior Engineer agent (technical depth, scale, incidents). You are interviewing another agent, the candidate agent,
+RECRUITER_SYSTEM = """You are a two-agent screening panel: a Hiring Manager agent (ownership, cross-team work, motivation, team fit) and a
+Senior Engineer agent (scale, performance, retries, observability); each asks its own questions. You are interviewing another agent, the candidate agent,
 which represents a candidate and answers only from the candidate's own notes, with citations.
 Be fair and evidence-based: count a requirement as met only if an answer with citations supports it.
 "I don't know" means there is no evidence, not that the candidate lacks the skill; say "no evidence in their notes"."""
@@ -187,12 +187,14 @@ def plan_questions(job: dict, live: bool) -> tuple[list[dict], str]:
             out = _claude(
                 RECRUITER_SYSTEM,
                 "Job description:\n" + job["description"] +
-                "\n\nWrite exactly 5 short screening questions about the candidate (call them 'the candidate'), "
-                "one per key requirement, most important first. Mark must-haves with must=true (at most 4). "
-                "Set by='eng' for technical depth, scale or incident questions, else by='hm'.",
+                "\n\nWrite exactly 6 short screening questions about the candidate (call them 'the candidate'), "
+                "three from each asker, one per key requirement, most important first. Mark must-haves with must=true (at most 5). "
+                "The two askers have different roles and never overlap: by='eng' (Senior Engineer) for how it was built: "
+                "architecture, scale, performance, retries, observability; by='hm' (Hiring Manager) for ownership, "
+                "business impact, cross-team work, motivation and team fit.",
                 QUESTION_SCHEMA,
             )
-            qs = [q for q in out["questions"] if q.get("q")][:5]
+            qs = [q for q in out["questions"] if q.get("q")][:6]
             if qs:
                 return qs, "claude"
         except Exception as e:  # fall back to the script, and say so
@@ -290,7 +292,7 @@ def interview(job_id: str | dict, url: str, live: bool | None = None, pace: floa
         wait(0.7)
         turn = {**item, "answer": reply["text"], "status": reply["status"], "citations": reply["citations"],
                 "nearest": reply["nearest"]}
-        thin = (reply["status"] == "answered" and item["must"] and probes < MAX_PROBES and is_thin(reply["text"]))
+        thin = (by == "eng" and reply["status"] == "answered" and item["must"] and probes < MAX_PROBES and is_thin(reply["text"]))
         yield {"type": "answer", "i": i, "text": reply["text"], "status": reply["status"],
                "citations": reply["citations"], "nearest": reply["nearest"], "thin": thin,
                "mode": reply.get("mode"), "model": reply.get("model"),

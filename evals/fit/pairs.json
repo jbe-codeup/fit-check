@@ -3,87 +3,87 @@
   "version": 1,
   "description": "Labelled job and candidate pairs for fitcheck. Each pair is one recruiter interview; the label is the verdict a careful human screener would give from the candidate's notes. All candidates and jobs are fictional.",
   "candidates": {
-    "sam-rivera": "sample_notes",
+    "alex-test": "sample_notes",
     "jordan-lee": "evals/fit/candidates/jordan-lee",
     "casey-nguyen": "evals/fit/candidates/casey-nguyen"
   },
   "jobs_file": "evals/fit/jobs.json",
   "pairs": [
     {
-      "id": "sam-rivera--principal-backend-go",
-      "candidate": "sam-rivera",
+      "id": "alex-test--principal-backend-go",
+      "candidate": "alex-test",
       "job": "principal-backend-go",
       "verdict": "Fit",
       "rationale": "Go and Python on AWS, the serverless Lambda pipeline rebuild, deploy reliability and cross-team mentoring cover every must-have.",
       "borderline": false
     },
     {
-      "id": "sam-rivera--staff-backend-reliability",
-      "candidate": "sam-rivera",
+      "id": "alex-test--staff-backend-reliability",
+      "candidate": "alex-test",
       "job": "staff-backend-reliability",
       "verdict": "Fit",
       "rationale": "Deploy success 71% to 98%, a zero-downtime Lambda pipeline cutover, Datadog dashboards and a three-team API effort.",
       "borderline": false
     },
     {
-      "id": "sam-rivera--backend-python-payments",
-      "candidate": "sam-rivera",
+      "id": "alex-test--backend-python-payments",
+      "candidate": "alex-test",
       "job": "backend-python-payments",
       "verdict": "Fit",
       "rationale": "Built a Python FastAPI and Postgres reconciliation service at a payments company, plus contract tests.",
       "borderline": false
     },
     {
-      "id": "sam-rivera--ai-tooling-engineer",
-      "candidate": "sam-rivera",
+      "id": "alex-test--ai-tooling-engineer",
+      "candidate": "alex-test",
       "job": "ai-tooling-engineer",
       "verdict": "Fit",
       "rationale": "Built RAG over runbooks, an MCP server for doc search and a 120-ticket eval set.",
       "borderline": false
     },
     {
-      "id": "sam-rivera--senior-ios",
-      "candidate": "sam-rivera",
+      "id": "alex-test--senior-ios",
+      "candidate": "alex-test",
       "job": "senior-ios",
       "verdict": "Not a fit",
       "rationale": "No Swift, UIKit, Core Data or mobile profiling in the notes.",
       "borderline": false
     },
     {
-      "id": "sam-rivera--frontend-react",
-      "candidate": "sam-rivera",
+      "id": "alex-test--frontend-react",
+      "candidate": "alex-test",
       "job": "frontend-react",
       "verdict": "Not a fit",
       "rationale": "TypeScript is listed, but no React, design system or accessibility work.",
       "borderline": false
     },
     {
-      "id": "sam-rivera--senior-data-engineer",
-      "candidate": "sam-rivera",
+      "id": "alex-test--senior-data-engineer",
+      "candidate": "alex-test",
       "job": "senior-data-engineer",
       "verdict": "Not a fit",
       "rationale": "Python, SQS and AWS, but no Kafka, Spark, Airflow, dbt or Snowflake.",
       "borderline": true
     },
     {
-      "id": "sam-rivera--staff-platform-k8s",
-      "candidate": "sam-rivera",
+      "id": "alex-test--staff-platform-k8s",
+      "candidate": "alex-test",
       "job": "staff-platform-k8s",
       "verdict": "Not a fit",
       "rationale": "Strong Terraform and CI/CD, but the notes show serverless Lambda, not Kubernetes, Helm or operators.",
       "borderline": true
     },
     {
-      "id": "sam-rivera--ml-engineer",
-      "candidate": "sam-rivera",
+      "id": "alex-test--ml-engineer",
+      "candidate": "alex-test",
       "job": "ml-engineer",
       "verdict": "Not a fit",
       "rationale": "LLM evals and RAG, but no model training, model serving or experiment tracking.",
       "borderline": true
     },
     {
-      "id": "sam-rivera--data-platform-aws",
-      "candidate": "sam-rivera",
+      "id": "alex-test--data-platform-aws",
+      "candidate": "alex-test",
       "job": "data-platform-aws",
       "verdict": "Not a fit",
       "rationale": "AWS, Terraform and Python fit, but no EMR, Glue, Kafka or Kinesis.",

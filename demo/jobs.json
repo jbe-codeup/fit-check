@@ -4,11 +4,23 @@
     "title": "Principal Backend Engineer",
     "company": "Sample Co.",
     "sample_note": "Sample job description written for this demo, not a real posting.",
-    "description": "Sample Co. is hiring a Principal Backend Engineer to own the design and reliability of our core platform. You will build and scale event-driven services in Go and Python on AWS Lambda, make them safe to retry, own them end to end including on-call and observability, lead projects across teams and mentor engineers. Experience with LLM tooling (MCP, RAG, evals) is a plus.",
+    "description": "Sample Co. is hiring a Principal Backend Engineer to own the design and reliability of our core platform. You will build and scale event-driven services in Go and Python on AWS Lambda, keep cold starts and costs down, make them safe to retry, own them end to end including on-call and observability, lead projects across teams and mentor engineers. Experience with LLM tooling (MCP, RAG, evals) is a plus.",
     "questions": [
       {
-        "q": "Tell me about an event-driven pipeline the candidate built on AWS Lambda, and how much traffic it handled.",
+        "q": "What has the candidate owned end to end, including on-call?",
+        "requirement": "Ownership end to end",
+        "must": true,
+        "by": "hm"
+      },
+      {
+        "q": "Walk me through an event-driven pipeline the candidate built on AWS Lambda, and how much traffic it handled.",
         "requirement": "Event-driven services on AWS Lambda",
+        "must": true,
+        "by": "eng"
+      },
+      {
+        "q": "How did the candidate deal with Lambda cold starts and concurrency limits?",
+        "requirement": "Lambda cold starts and concurrency",
         "must": true,
         "by": "eng"
       },
@@ -22,7 +34,7 @@
         "q": "How does the candidate monitor a service and get alerted when it breaks?",
         "requirement": "Observability and on-call",
         "must": true,
-        "by": "hm"
+        "by": "eng"
       },
       {
         "q": "Tell me about a time the candidate got several teams to agree on a change.",
@@ -32,7 +44,7 @@
       },
       {
         "q": "What kind of team does the candidate want to join next?",
-        "requirement": "Motivation matches the role",
+        "requirement": "Motivation and team fit",
         "must": false,
         "by": "hm"
       }

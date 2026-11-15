@@ -153,8 +153,8 @@
   <main>
     <div class="agents">
       <div class="panel-agents" title="The interview panel">
-        <div class="agent rec hm"><div class="av">HM</div><div><div class="n">Hiring Manager Agent</div><div class="d">ownership, impact, why looking</div></div></div>
-        <div class="agent rec eng"><div class="av">SE</div><div><div class="n">Senior Engineer Agent</div><div class="d">depth, scale, incidents</div></div></div>
+        <div class="agent rec hm"><div class="av">HM</div><div><div class="n">Hiring Manager Agent</div><div class="d">ownership, impact, team fit</div></div></div>
+        <div class="agent rec eng"><div class="av">SE</div><div><div class="n">Senior Engineer Agent</div><div class="d">Lambda depth, retries</div></div></div>
       </div>
       <div class="agent cand"><div class="av" id="cand-av">C</div><div><div class="n">Candidate Agent</div><div class="d"><span id="cand-desc">the candidate's AI representative</span> · <a class="link" id="card-link">agent card</a></div></div></div>
     </div>
@@ -178,7 +178,7 @@ fetch("/api/jobs").then((r) => r.json()).then((d) => {
   const c = d.candidate || {};
   candName = c.name || "Candidate";
   $("#cand-av").textContent = candName.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
-  $("#cand-desc").textContent = `${candName}'s AI representative` + (c.fictional ? " (fictional sample)" : "");
+  $("#cand-desc").textContent = `${candName}'s AI representative` + (c.fictional ? " (test candidate)" : "");
   $("#jobs").innerHTML = Object.entries(jobs).map(([id, j]) =>
     `<button class="job" data-id="${id}"><span class="go">Run ▸</span><div class="k">${esc(j.label)} · sample</div><div class="t">${esc(j.title)}</div></button>`).join("");
   document.querySelectorAll(".job").forEach((b) => b.onclick = () => run(b.dataset.id));
