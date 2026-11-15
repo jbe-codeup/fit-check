@@ -14,7 +14,7 @@
       "candidate": "sam-rivera",
       "job": "principal-backend-go",
       "verdict": "Fit",
-      "rationale": "Go and Python on AWS, the Lambda to ECS migration, deploy reliability and cross-team mentoring cover every must-have.",
+      "rationale": "Go and Python on AWS, the serverless Lambda pipeline rebuild, deploy reliability and cross-team mentoring cover every must-have.",
       "borderline": false
     },
     {
@@ -22,7 +22,7 @@
       "candidate": "sam-rivera",
       "job": "staff-backend-reliability",
       "verdict": "Fit",
-      "rationale": "Deploy success 71% to 98%, a zero-downtime ECS migration, Datadog dashboards and a three-team API effort.",
+      "rationale": "Deploy success 71% to 98%, a zero-downtime Lambda pipeline cutover, Datadog dashboards and a three-team API effort.",
       "borderline": false
     },
     {
@@ -70,7 +70,7 @@
       "candidate": "sam-rivera",
       "job": "staff-platform-k8s",
       "verdict": "Not a fit",
-      "rationale": "Strong Terraform and CI/CD, but the notes show ECS, not Kubernetes, Helm or operators.",
+      "rationale": "Strong Terraform and CI/CD, but the notes show serverless Lambda, not Kubernetes, Helm or operators.",
       "borderline": true
     },
     {

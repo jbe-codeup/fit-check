@@ -300,8 +300,7 @@ def interview(job_id: str | dict, url: str, live: bool | None = None, pace: floa
         if thin:
             # The Senior Engineer agent probes once: same story, asking for the numbers.
             probes += 1
-            topic = notes_of(reply["citations"])[0]
-            fq = f"Follow-up on \u201c{topic}\u201d: what was the measurable result, and how big did it get?"
+            fq = f"Follow-up on {item['requirement'][0].lower() + item['requirement'][1:]}: what was the measurable result?"
             req = a2a.build_request(fq, {"from": PANEL["eng"]["name"]})
             yield {"type": "question", "i": i, "by": "eng", "text": fq, "requirement": item["requirement"], "must": item["must"],
                    "followup": True, "rpc": req}

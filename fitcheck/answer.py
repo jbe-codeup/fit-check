@@ -4,7 +4,7 @@ Order of checks, cheapest first, so most refusals never call a model:
 1. Personal or sensitive topic (salary, family, health...)  -> polite redirect to the candidate.
 2. Retrieval below the similarity threshold                  -> "I don't know, here's how to reach them".
    For a skill the notes don't cover but that sits next to one they do (iOS next to
-   backend APIs, Kubernetes next to ECS), it says plainly that it's a gap and quotes
+   backend APIs, Kubernetes next to containers), it says plainly that it's a gap and quotes
    the nearest real experience, cited separately as nearest_citations.
 3. Claude (Haiku by default) answers ONLY from the retrieved chunks and must
    cite at least one of them; an answer with no valid citation becomes "I don't know".
@@ -73,7 +73,7 @@ ADJACENT = [
     (re.compile(r"\b(profil\w*|instruments|app performance|performance tuning)\b", re.I), "p99 latency went from"),
     (re.compile(r"\b(rust|java|scala|c\+\+|kotlin)\b", re.I), "languages go python typescript"),
     (re.compile(r"\b(ios|swift\w*|xcode|uikit|core data|android|jetpack|mobile|iphone)\b", re.I), "backend engineer event-driven services go python aws"),
-    (re.compile(r"\b(kubernetes|k8s|helm|eks)\b", re.I), "ecs fargate docker containers"),
+    (re.compile(r"\b(kubernetes|k8s|helm|eks)\b", re.I), "fresh containers github actions docker"),
 ]
 
 

@@ -2,7 +2,7 @@
   "principal-backend-go": {
     "title": "Principal Backend Engineer",
     "company": "Sample Co.",
-    "description": "Sample Co. is hiring a Principal Backend Engineer to own the design and reliability of our core platform. You will build high-throughput services in Go and Python on AWS (Lambda, ECS, S3), lead migrations with no downtime, raise the reliability of our CI/CD and data pipelines, lead projects across teams and mentor engineers. Hands-on experience building LLM tooling (MCP servers, RAG, evals) is a plus.",
+    "description": "Sample Co. is hiring a Principal Backend Engineer to own the design and reliability of our core platform. You will build high-throughput services in Go and Python on AWS (Lambda, SQS, DynamoDB), lead migrations with no downtime, raise the reliability of our CI/CD and data pipelines, lead projects across teams and mentor engineers. Hands-on experience building LLM tooling (MCP servers, RAG, evals) is a plus.",
     "questions": [
       {
         "q": "Which languages does the candidate use for backend services, and have they shipped Go in production?",
@@ -10,7 +10,7 @@
         "must": true
       },
       {
-        "q": "Has the candidate designed or migrated services on AWS, like Lambda or ECS?",
+        "q": "Has the candidate designed or migrated services on AWS, like Lambda pipelines?",
         "requirement": "AWS service design and migrations",
         "must": true
       },

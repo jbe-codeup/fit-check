@@ -64,6 +64,12 @@ SYNONYMS = {
     "scale": ["throughput", "scale", "scaled", "requests", "peak"],
     "scal": ["scale", "throughput", "peak"],  # "scaled" / "scaling" stem to "scal"
     "system": ["service", "platform"],
+    "retry": ["retries", "idempotent", "duplicate", "twice"],
+    "idempotency": ["idempotent", "duplicate", "twice"],
+    "monitor": ["metrics", "alarms", "dashboard", "traces", "logs"],
+    "observability": ["metrics", "alarms", "dashboard", "traces", "logs"],
+    "alert": ["alarms", "page", "paging"],
+    "coach": ["mentor", "mentored", "pairing"],
     "incident": ["outage", "postmortem", "incident"],
     "outage": ["incident", "postmortem"],
     "own": ["owned", "ownership"],
