@@ -1,4 +1,9 @@
-"""The recruiter agent: reads a job description, interviews the candidate agent over A2A, and gives a verdict.
+"""The interview panel: reads a job description, interviews the candidate agent over A2A, and gives a verdict.
+
+The panel is two agents: a Hiring Manager agent (ownership, impact, motivation) and a
+Senior Engineer agent (technical depth, scale, incidents; it probes thin answers). They
+share one scorecard and give one combined verdict. Each A2A request says which of them
+is asking in a data part ({"from": ...}).
 
 It is a separate agent from the candidate agent and only talks to it over HTTP with A2A
 JSON-RPC (`message/send`), the same way a third-party recruiting agent would.
@@ -6,8 +11,8 @@ JSON-RPC (`message/send`), the same way a third-party recruiting agent would.
 The interview:
   1. Scorecard: the job description becomes must-haves and nice-to-haves.
   2. One question per requirement. An item is met only by an answer with citations.
-  3. Follow-ups: a cited answer to a must-have with no numbers is thin, so the recruiter
-     probes once for scale, ownership and result (at most MAX_PROBES per interview).
+  3. Follow-ups: a cited answer to a must-have with no numbers is thin, so the Senior Engineer
+     agent probes once for the measurable result (at most MAX_PROBES per interview).
   4. Two-way: the candidate agent gets to ask one question about the role, answered
      from the job's own facts.
   5. Verdict: Fit only if every must-have is met; it cites the scorecard item by item.
@@ -34,6 +39,20 @@ HERE = Path(__file__).resolve().parent
 JOBS = json.loads((HERE / "jobs.json").read_text(encoding="utf-8"))
 MODEL = os.environ.get("FITCHECK_MODEL", "claude-haiku-5-5")
 MAX_PROBES = int(os.environ.get("FITCHECK_MAX_PROBES", "1"))
+
+# The interviewing side is a two-agent panel. Both question the candidate agent over A2A,
+# share one scorecard and give one combined verdict.
+PANEL = {
+    "hm": {"name": "Hiring Manager Agent", "initials": "HM", "focus": "ownership, impact and motivation"},
+    "eng": {"name": "Senior Engineer Agent", "initials": "SE", "focus": "technical depth, scale and incidents; probes thin answers"},
+}
+TECH = re.compile(r"scal|throughput|incident|outage|latency|architect|design|go\b|python|aws|kubernetes|ios|swift|profil|database|api", re.I)
+
+
+def asker(item: dict) -> str:
+    """Which panel agent asks this question: the script says, else a keyword guess."""
+    by = item.get("by")
+    return by if by in PANEL else ("eng" if TECH.search(item.get("q", "") + " " + item.get("requirement", "")) else "hm")
 
 
 # ---------------------------------------------------------------- A2A client
@@ -106,7 +125,7 @@ def role_answer(job: dict, question: str) -> str:
     facts = job.get("role_facts") or []
     terms = set(expand(tokenize(question)))
     picked = [f for f in facts if terms & set(expand(tokenize(f)))] or facts
-    return " ".join(picked) if picked else "The job description doesn't say; the hiring manager can answer that."
+    return " ".join(picked) if picked else "The job description doesn't say, so I'll find out and follow up."
 
 
 # ---------------------------------------------------------------- Claude (optional)
@@ -132,8 +151,9 @@ QUESTION_SCHEMA = {
             "type": "array",
             "items": {
                 "type": "object",
-                "properties": {"q": {"type": "string"}, "requirement": {"type": "string"}, "must": {"type": "boolean"}},
-                "required": ["q", "requirement", "must"],
+                "properties": {"q": {"type": "string"}, "requirement": {"type": "string"}, "must": {"type": "boolean"},
+                               "by": {"type": "string", "enum": ["hm", "eng"]}},
+                "required": ["q", "requirement", "must", "by"],
                 "additionalProperties": False,
             },
         }
@@ -154,7 +174,8 @@ VERDICT_SCHEMA = {
     "additionalProperties": False,
 }
 
-RECRUITER_SYSTEM = """You are a recruiter's screening agent. You are interviewing another agent, the candidate agent,
+RECRUITER_SYSTEM = """You are a two-agent screening panel: a Hiring Manager agent (ownership, impact, motivation) and a
+Senior Engineer agent (technical depth, scale, incidents). You are interviewing another agent, the candidate agent,
 which represents a candidate and answers only from the candidate's own notes, with citations.
 Be fair and evidence-based: count a requirement as met only if an answer with citations supports it.
 "I don't know" means there is no evidence, not that the candidate lacks the skill; say "no evidence in their notes"."""
@@ -167,7 +188,8 @@ def plan_questions(job: dict, live: bool) -> tuple[list[dict], str]:
                 RECRUITER_SYSTEM,
                 "Job description:\n" + job["description"] +
                 "\n\nWrite exactly 5 short screening questions about the candidate (call them 'the candidate'), "
-                "one per key requirement, most important first. Mark must-haves with must=true (at most 4).",
+                "one per key requirement, most important first. Mark must-haves with must=true (at most 4). "
+                "Set by='eng' for technical depth, scale or incident questions, else by='hm'.",
                 QUESTION_SCHEMA,
             )
             qs = [q for q in out["questions"] if q.get("q")][:5]
@@ -244,7 +266,7 @@ def interview(job_id: str | dict, url: str, live: bool | None = None, pace: floa
 
     card = a2a.card()
     yield {"type": "start", "job": {k: job.get(k, "") for k in ("label", "title", "company", "sample_note", "description")},
-           "job_id": job_id, "recruiter_mode": f"Claude {MODEL}" if live else "scripted, no key"}
+           "job_id": job_id, "recruiter_mode": f"Claude {MODEL}" if live else "scripted, no key", "panel": PANEL}
     yield {"type": "card", "card": card, "url": url}
     wait(0.8)
 
@@ -255,8 +277,9 @@ def interview(job_id: str | dict, url: str, live: bool | None = None, pace: floa
 
     turns, probes = [], 0
     for i, item in enumerate(questions):
-        req = a2a.build_request(item["q"])
-        yield {"type": "question", "i": i, "text": item["q"], "requirement": item["requirement"],
+        by = asker(item)
+        req = a2a.build_request(item["q"], {"from": PANEL[by]["name"]})
+        yield {"type": "question", "i": i, "by": by, "text": item["q"], "requirement": item["requirement"],
                "must": item["must"], "rpc": req}
         wait(1.0)
         yield {"type": "thinking", "who": "candidate"}
@@ -275,12 +298,12 @@ def interview(job_id: str | dict, url: str, live: bool | None = None, pace: floa
         wait(0.9)
 
         if thin:
-            # Probe once: same story, asking for the numbers a hiring manager would want.
+            # The Senior Engineer agent probes once: same story, asking for the numbers.
             probes += 1
             topic = notes_of(reply["citations"])[0]
             fq = f"Follow-up on \u201c{topic}\u201d: what was the measurable result, and how big did it get?"
-            req = a2a.build_request(fq)
-            yield {"type": "question", "i": i, "text": fq, "requirement": item["requirement"], "must": item["must"],
+            req = a2a.build_request(fq, {"from": PANEL["eng"]["name"]})
+            yield {"type": "question", "i": i, "by": "eng", "text": fq, "requirement": item["requirement"], "must": item["must"],
                    "followup": True, "rpc": req}
             wait(1.0)
             yield {"type": "thinking", "who": "candidate"}
@@ -300,8 +323,9 @@ def interview(job_id: str | dict, url: str, live: bool | None = None, pace: floa
         turns.append(turn)
 
     # Two-way: the candidate's agent asks one question about the role before the verdict.
-    req = a2a.build_request("Before I wrap up: is there anything you'd like to ask about the role?", {"intent": "ask_role"})
-    yield {"type": "invite", "text": "Before I wrap up: is there anything you'd like to ask about the role?", "rpc": req}
+    req = a2a.build_request("Before I wrap up: is there anything you'd like to ask about the role?",
+                            {"intent": "ask_role", "from": PANEL["hm"]["name"]})
+    yield {"type": "invite", "by": "hm", "text": "Before I wrap up: is there anything you'd like to ask about the role?", "rpc": req}
     wait(0.6)
     yield {"type": "thinking", "who": "candidate"}
     resp = a2a.send(req)
@@ -311,10 +335,10 @@ def interview(job_id: str | dict, url: str, live: bool | None = None, pace: floa
     wait(0.8)
     yield {"type": "thinking", "who": "recruiter"}
     ra = role_answer(job, cq["text"])
-    req = a2a.build_request(ra, {"intent": "role_answer"})
+    req = a2a.build_request(ra, {"intent": "role_answer", "from": PANEL["hm"]["name"]})
     resp = a2a.send(req)
     wait(0.6)
-    yield {"type": "role_answer", "text": ra, "rpc": req, "ack": parse_reply(resp)["text"]}
+    yield {"type": "role_answer", "by": "hm", "text": ra, "rpc": req, "ack": parse_reply(resp)["text"]}
     wait(0.9)
 
     yield {"type": "thinking", "who": "recruiter"}
@@ -331,13 +355,14 @@ def run_cli(job_ids: list[str], url: str, fast: bool = False) -> int:
             t = ev["type"]
             if t == "start":
                 print(f"\n=== {ev['job']['label']}: {ev['job']['title']} ({ev['job']['sample_note']})")
-                print(f"    recruiter: {ev['recruiter_mode']}")
+                print(f"    panel: {', '.join(p['name'] for p in PANEL.values())} ({ev['recruiter_mode']})")
             elif t == "card":
                 print(f"    discovered A2A agent: {ev['card']['name']} at {ev['url']}")
             elif t == "plan":
                 print("    scorecard: " + "; ".join(f"{q['requirement']} ({'must' if q['must'] else 'nice'})" for q in ev["questions"]))
             elif t in ("question", "invite"):
-                print(f"\nRecruiter > {'(follow-up) ' if ev.get('followup') else ''}{ev['text']}")
+                who = PANEL[ev.get("by", "hm")]["name"].replace(" Agent", "")
+                print(f"\n{who} > {'(follow-up) ' if ev.get('followup') else ''}{ev['text']}")
             elif t == "answer":
                 print(f"Candidate > {ev['text']}")
                 for n in notes_of(ev["citations"]):
@@ -347,9 +372,9 @@ def run_cli(job_ids: list[str], url: str, fast: bool = False) -> int:
             elif t == "role_question":
                 print(f"Candidate > {ev['text']}")
             elif t == "role_answer":
-                print(f"Recruiter > {ev['text']}")
+                print(f"Hiring Manager > {ev['text']}")
             elif t == "verdict":
-                print(f"\nVerdict: {ev['verdict']}\n  {ev['summary']}")
+                print(f"\nPanel verdict: {ev['verdict']}\n  {ev['summary']}")
                 for c in ev.get("scorecard", []):
                     mark = "met " if c["status"] == "met" else "gap "
                     src = ", ".join(c["evidence"]) or "no evidence in notes"

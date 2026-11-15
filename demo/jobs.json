@@ -9,32 +9,37 @@
       {
         "q": "Tell me about a system the candidate scaled.",
         "requirement": "Scaled high-throughput services",
-        "must": true
+        "must": true,
+        "by": "eng"
       },
       {
         "q": "What did the candidate own end to end?",
         "requirement": "End-to-end ownership",
-        "must": true
+        "must": true,
+        "by": "hm"
       },
       {
         "q": "Walk me through a production incident the candidate handled.",
         "requirement": "Production incident response",
-        "must": true
+        "must": true,
+        "by": "eng"
       },
       {
         "q": "Has the candidate led work across teams or mentored engineers?",
         "requirement": "Cross-team leadership and mentoring",
-        "must": true
+        "must": true,
+        "by": "hm"
       },
       {
         "q": "Why is the candidate looking for a new role?",
         "requirement": "Motivation matches the role",
-        "must": false
+        "must": false,
+        "by": "hm"
       }
     ],
     "role_facts": [
       "Yes: the headcount is approved and funded, and we're interviewing this month.",
-      "The hiring manager reads every screening report within two days."
+      "The team reads every screening report within two days."
     ]
   },
   "notfit": {
@@ -47,17 +52,20 @@
       {
         "q": "Has the candidate shipped native iOS apps in Swift, with UIKit or SwiftUI?",
         "requirement": "Native iOS (Swift, UIKit)",
-        "must": true
+        "must": true,
+        "by": "eng"
       },
       {
         "q": "Has the candidate done mobile performance profiling with Instruments?",
         "requirement": "Mobile performance profiling",
-        "must": true
+        "must": true,
+        "by": "eng"
       },
       {
         "q": "Has the candidate mentored other engineers?",
         "requirement": "Mentoring",
-        "must": false
+        "must": false,
+        "by": "hm"
       }
     ],
     "role_facts": [

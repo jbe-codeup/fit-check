@@ -64,6 +64,9 @@ class InterviewTests(unittest.TestCase):
         self.assertEqual(sum(1 for e in ev if e["type"] == "question" and e.get("followup")), 1)
         self.assertTrue(any(e["type"] == "role_question" for e in ev))
         self.assertTrue(all(row["status"] == "met" for row in verdict["scorecard"]))
+        askers = {e["by"] for e in ev if e["type"] == "question"}
+        self.assertEqual(askers, {"hm", "eng"})  # both panel agents ask
+        self.assertTrue(all(e["by"] == "eng" for e in ev if e["type"] == "question" and e.get("followup")))
 
     def test_not_fit_job_states_gaps(self):
         ev = self.run_job("notfit")

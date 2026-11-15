@@ -7,7 +7,7 @@
 <style>
   :root {
     --bg: #0a0e16; --panel: #111725; --panel2: #161e2f; --line: #222c40; --text: #e6eaf2; --muted: #8b97ad;
-    --rec: #8b9cff; --rec-bg: #1a2042; --cand: #34d3b4; --cand-bg: #0f2a2a;
+    --rec: #8b9cff; --rec-bg: #1a2042; --eng: #c4a5ff; --cand: #34d3b4; --cand-bg: #0f2a2a;
     --fit: #22c55e; --fit-bg: #0d2a1a; --nofit: #f59e0b; --nofit-bg: #2e2109; --bad: #f87171;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   }
@@ -53,6 +53,14 @@
   .agent { display: flex; align-items: center; gap: 10px; }
   .agent .av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; }
   .agent.rec .av { background: var(--rec-bg); color: var(--rec); border: 1px solid #343d78; }
+  .panel-agents { display: flex; gap: 22px; }
+  .agent.rec .av { font-size: 13px; }
+  .agent.eng .av { background: #221a42; color: var(--eng); border: 1px solid #4a3275; }
+  .eng .bubble { background: #1d1838; border-color: #3f2e6b; }
+  .rec.eng.followup .bubble { border-color: #6b4fb0; }
+  .who b { font-weight: 600; }
+  .who b.hm { color: var(--rec); }
+  .who b.eng { color: var(--eng); }
   .agent.cand .av { background: var(--cand-bg); color: var(--cand); border: 1px solid #1d5a50; }
   .agent .n { font-weight: 650; }
   .agent .d { font-size: 12px; color: var(--muted); }
@@ -114,7 +122,7 @@
   <div class="logo">f</div>
   <div>
     <h1>fitcheck</h1>
-    <div class="sub">A recruiter's agent checks job fit with a candidate's AI representative, over A2A</div>
+    <div class="sub">A two-agent interview panel screens a candidate's AI representative, over A2A</div>
   </div>
   <span class="pill" id="mode">…</span>
 </header>
@@ -144,11 +152,14 @@
   </aside>
   <main>
     <div class="agents">
-      <div class="agent rec"><div class="av">R</div><div><div class="n">Recruiter Agent</div><div class="d" id="rec-mode">screens candidates for a job</div></div></div>
+      <div class="panel-agents" title="The interview panel">
+        <div class="agent rec hm"><div class="av">HM</div><div><div class="n">Hiring Manager Agent</div><div class="d">ownership, impact, why looking</div></div></div>
+        <div class="agent rec eng"><div class="av">SE</div><div><div class="n">Senior Engineer Agent</div><div class="d">depth, scale, incidents</div></div></div>
+      </div>
       <div class="agent cand"><div class="av" id="cand-av">C</div><div><div class="n">Candidate Agent</div><div class="d"><span id="cand-desc">the candidate's AI representative</span> · <a class="link" id="card-link">agent card</a></div></div></div>
     </div>
     <div id="chat">
-      <div class="empty"><div class="big">Pick a job to start the interview</div>The recruiter agent discovers the candidate agent's card, asks its questions over A2A, then gives a verdict. Press 1 or 2.</div>
+      <div class="empty"><div class="big">Pick a job to start the interview</div>The interview panel discovers the candidate agent's card, asks its questions over A2A, then gives one verdict. Press 1 or 2.</div>
     </div>
   </main>
 </div>
@@ -188,6 +199,9 @@ function setMark(i, cls, txt) {
   if (!mark) return;
   mark.className = "mark " + cls; mark.textContent = txt || "";
 }
+const PANEL = { hm: "Hiring Manager Agent", eng: "Senior Engineer Agent" };
+const by = (ev) => (PANEL[ev.by] ? ev.by : "hm");
+const asker = (ev) => `<b class="${by(ev)}">${PANEL[by(ev)]}</b>`;
 function chip(cls, text) { return `<span class="flag ${cls}">${esc(text)}</span>`; }
 function scroll() { chat.scrollTop = chat.scrollHeight; }
 function typing(on, who) {
@@ -234,11 +248,10 @@ async function handle(ev) {
     $("#jd-title").textContent = `${ev.job.title} · ${ev.job.company}`;
     $("#jd-sample").textContent = ev.job.sample_note;
     $("#jd-text").textContent = ev.job.description;
-    $("#rec-mode").textContent = ev.recruiter_mode === "scripted, no key" ? "scripted questions, rule-based verdict" : ev.recruiter_mode;
     if (ev.replay) $("#mode").textContent = "Replay of a recorded live run";
   } else if (ev.type === "card") {
     card = ev.card;
-    sysLine(`Recruiter Agent discovered "${ev.card.name}" via its A2A agent card (skill: ${ev.card.skills[0].name})`);
+    sysLine(`The panel discovered "${ev.card.name}" via its A2A agent card (skill: ${ev.card.skills[0].name})`);
   } else if (ev.type === "thinking") {
     typing(true, ev.who === "candidate" ? "cand" : "rec");
   } else if (ev.type === "plan") {
@@ -247,13 +260,13 @@ async function handle(ev) {
     $("#reqs").innerHTML = ev.questions.map((q, i) =>
       `<li id="req-${i}"><span class="mark"></span><span>${esc(q.requirement)}<span class="tag ${q.must ? "must" : ""}">${q.must ? "must-have" : "nice-to-have"}</span><span class="ev" id="ev-${i}"></span></span></li>`).join("");
     const musts = ev.questions.filter((q) => q.must).length;
-    sysLine(`Recruiter Agent built a scorecard from the job description: ${musts} must-haves, ${ev.questions.length - musts} nice-to-have${ev.questions.length - musts === 1 ? "" : "s"}`);
+    sysLine(`The panel built a shared scorecard from the job description: ${musts} must-haves, ${ev.questions.length - musts} nice-to-have${ev.questions.length - musts === 1 ? "" : "s"}`);
     updateCount();
   } else if (ev.type === "question") {
     typing(false);
     if (!ev.followup) setMark(ev.i, "ask");
-    const m = document.createElement("div"); m.className = "msg rec" + (ev.followup ? " followup" : "");
-    m.innerHTML = `<div class="who">Recruiter Agent → Candidate Agent${ev.followup ? " · follow-up" : ""}</div><div class="bubble"></div>`;
+    const m = document.createElement("div"); m.className = "msg rec " + by(ev) + (ev.followup ? " followup" : "");
+    m.innerHTML = `<div class="who">${asker(ev)} → Candidate Agent${ev.followup ? " · follow-up" : ""}</div><div class="bubble"></div>`;
     chat.appendChild(m); scroll();
     await typeInto(m.querySelector(".bubble"), ev.text);
     if (ev.followup) m.insertAdjacentHTML("beforeend", `<div class="meta">${chip("probe", "probing for the measurable result")}</div>`);
@@ -299,8 +312,8 @@ async function handle(ev) {
     scroll();
   } else if (ev.type === "invite") {
     typing(false);
-    const m = document.createElement("div"); m.className = "msg rec";
-    m.innerHTML = `<div class="who">Recruiter Agent → Candidate Agent</div><div class="bubble"></div>`;
+    const m = document.createElement("div"); m.className = "msg rec " + by(ev);
+    m.innerHTML = `<div class="who">${asker(ev)} → Candidate Agent</div><div class="bubble"></div>`;
     chat.appendChild(m); scroll();
     await typeInto(m.querySelector(".bubble"), ev.text);
     addRaw(m, "A2A request · intent ask_role", ev.rpc, false);
@@ -314,8 +327,8 @@ async function handle(ev) {
     scroll();
   } else if (ev.type === "role_answer") {
     typing(false);
-    const m = document.createElement("div"); m.className = "msg rec";
-    m.innerHTML = `<div class="who">Recruiter Agent → Candidate Agent</div><div class="bubble"></div>`;
+    const m = document.createElement("div"); m.className = "msg rec " + by(ev);
+    m.innerHTML = `<div class="who">${asker(ev)} → Candidate Agent</div><div class="bubble"></div>`;
     chat.appendChild(m); scroll();
     await typeInto(m.querySelector(".bubble"), ev.text);
     m.insertAdjacentHTML("beforeend", `<div class="meta">${chip("facts", "answered from the job's own facts")}</div>`);
@@ -331,7 +344,7 @@ async function handle(ev) {
       const src = ok ? c.evidence.join(", ") + (c.probed ? " (probed)" : "") : "gap" + (c.nearest && c.nearest.length ? " · nearest: " + c.nearest.join(", ") : "");
       return `<div class="row"><span class="mark ${ok ? "ok" : "no"}">${ok ? "✓" : "–"}</span><span>${esc(c.requirement)}<span class="tag ${c.must ? "must" : ""}">${c.must ? "must-have" : "nice-to-have"}</span></span><span class="src ${ok ? "" : "gap"}">${esc(src)}</span></div>`;
     }).join("");
-    v.innerHTML = `<div class="label">Recruiter Agent's verdict, from the scorecard</div><div class="v">Verdict: ${fit ? "Fit" : "Not a fit"}</div>
+    v.innerHTML = `<div class="label">The panel's verdict, from the shared scorecard</div><div class="v">Verdict: ${fit ? "Fit" : "Not a fit"}</div>
       <div class="s">${esc(ev.summary)}</div>
       ${rows ? `<div class="score">${rows}</div>` : `<div class="cols"><div><h4>Backed by cited notes</h4><ul>${li(ev.matched)}</ul></div><div><h4>No evidence in notes</h4><ul>${li(ev.gaps)}</ul></div></div>`}`;
     chat.appendChild(v); scroll();
