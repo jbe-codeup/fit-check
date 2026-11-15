@@ -40,6 +40,10 @@
   .mark.ok { background: var(--fit); border-color: var(--fit); color: #04130a; }
   .mark.no { background: transparent; border-color: var(--nofit); color: var(--nofit); }
   .mark.ask { border-color: var(--rec); animation: pulse 1s infinite; }
+  .mark.probe { border-color: var(--nofit); color: var(--nofit); animation: pulse 1s infinite; }
+  .card h3 .count { float: right; text-transform: none; letter-spacing: 0; color: var(--text); font-weight: 600; }
+  .ev { display: block; font-size: 11.5px; color: #a7f3e4; margin-top: 2px; }
+  .ev.gap { color: var(--nofit); }
   .tag { font-size: 10.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 0 5px; margin-left: 6px; }
   .tag.must { color: var(--rec); border-color: #343d78; }
   .wire { font-family: var(--mono); font-size: 12px; color: var(--muted); display: grid; gap: 4px; }
@@ -74,6 +78,16 @@
   pre.raw { display: none; margin: 0; max-width: 100%; font: 11.5px/1.45 var(--mono); color: #b9c3d6; background: #0b1020; border: 1px solid var(--line); border-radius: 8px; padding: 10px; overflow-x: auto; white-space: pre-wrap; word-break: break-word; }
   pre.raw.open { display: block; }
   .status-idk { font-size: 11px; color: var(--nofit); border: 1px solid #5a4214; border-radius: 6px; padding: 1px 7px; }
+  .cite.near { color: #f3d9a7; background: #221a0c; border-color: #5a4214; }
+  .flag { font-size: 11px; border-radius: 6px; padding: 1px 7px; border: 1px solid var(--line); color: var(--muted); }
+  .flag.probe { color: var(--nofit); border-color: #5a4214; }
+  .flag.ask { color: var(--cand); border-color: #1d5a50; }
+  .flag.facts { color: var(--rec); border-color: #343d78; }
+  .rec.followup .bubble { border-style: dashed; border-color: #4b56a8; }
+  .score { display: grid; gap: 8px; margin-top: 14px; }
+  .score .row { display: grid; grid-template-columns: 22px 1fr auto; gap: 10px; align-items: center; font-size: 14px; }
+  .score .src { font-size: 12px; color: #a7f3e4; text-align: right; }
+  .score .src.gap { color: var(--nofit); }
   .typing { display: inline-flex; gap: 4px; padding: 12px 14px; }
   .typing i { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); animation: blink 1.2s infinite; }
   .typing i:nth-child(2) { animation-delay: .2s; } .typing i:nth-child(3) { animation-delay: .4s; }
@@ -114,7 +128,7 @@
       <div class="jd-text" id="jd-text"></div>
     </div>
     <div class="card" id="req-card" hidden>
-      <h3>Requirements checked</h3>
+      <h3>Scorecard <span class="count" id="score-count"></span></h3>
       <ul class="reqs" id="reqs"></ul>
     </div>
     <div class="card">
@@ -141,7 +155,7 @@
 <script>
 const $ = (s) => document.querySelector(s);
 const chat = $("#chat");
-let candName = "Candidate", jobs = {}, es = null, count = 0, card = null, typingEl = null;
+let candName = "Candidate", jobs = {}, es = null, count = 0, card = null, typingEl = null, plan = [], met = {}, thinNotes = {};
 const DOC = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
@@ -161,6 +175,20 @@ fetch("/api/jobs").then((r) => r.json()).then((d) => {
 document.addEventListener("keydown", (e) => { const ids = Object.keys(jobs); const n = +e.key; if (n >= 1 && n <= ids.length) run(ids[n - 1]); });
 $("#card-link").onclick = () => { if (!card) return; addRaw(chat, "Agent card · GET /.well-known/agent-card.json", card, true); scroll(); };
 
+function sysLine(text) {
+  const sys = document.createElement("div"); sys.className = "who"; sys.style.alignSelf = "center"; sys.textContent = text;
+  chat.appendChild(sys); scroll();
+}
+function updateCount() {
+  const musts = plan.map((q, i) => [q, i]).filter(([q]) => q.must);
+  $("#score-count").textContent = `${musts.filter(([, i]) => met[i]).length}/${musts.length} must-haves`;
+}
+function setMark(i, cls, txt) {
+  const mark = document.querySelector(`#req-${i} .mark`);
+  if (!mark) return;
+  mark.className = "mark " + cls; mark.textContent = txt || "";
+}
+function chip(cls, text) { return `<span class="flag ${cls}">${esc(text)}</span>`; }
 function scroll() { chat.scrollTop = chat.scrollHeight; }
 function typing(on, who) {
   if (typingEl) { typingEl.remove(); typingEl = null; }
@@ -193,7 +221,7 @@ function run(id) {
   count = 0; $("#count").textContent = 0; $("#lat").textContent = "-";
   document.querySelectorAll(".job").forEach((b) => b.classList.toggle("active", b.dataset.id === id));
   chat.innerHTML = ""; typing(false);
-  const reqs = $("#reqs"); reqs.innerHTML = "";
+  const reqs = $("#reqs"); reqs.innerHTML = ""; plan = []; met = {}; thinNotes = {}; $("#score-count").textContent = "";
   const replay = new URLSearchParams(location.search).get("replay") === "1" ? "&replay=1" : "";
   es = new EventSource("/api/run?job=" + encodeURIComponent(id) + replay);
   es.onmessage = (m) => { const ev = JSON.parse(m.data); play(() => handle(ev)); };
@@ -210,22 +238,25 @@ async function handle(ev) {
     if (ev.replay) $("#mode").textContent = "Replay of a recorded live run";
   } else if (ev.type === "card") {
     card = ev.card;
-    const sys = document.createElement("div"); sys.className = "who"; sys.style.alignSelf = "center";
-    sys.textContent = `Recruiter Agent discovered "${ev.card.name}" via its A2A agent card (skill: ${ev.card.skills[0].name})`;
-    chat.appendChild(sys);
+    sysLine(`Recruiter Agent discovered "${ev.card.name}" via its A2A agent card (skill: ${ev.card.skills[0].name})`);
   } else if (ev.type === "thinking") {
     typing(true, ev.who === "candidate" ? "cand" : "rec");
   } else if (ev.type === "plan") {
     typing(false);
+    plan = ev.questions;
     $("#reqs").innerHTML = ev.questions.map((q, i) =>
-      `<li id="req-${i}"><span class="mark"></span><span>${esc(q.requirement)}<span class="tag ${q.must ? "must" : ""}">${q.must ? "must-have" : "nice-to-have"}</span></span></li>`).join("");
+      `<li id="req-${i}"><span class="mark"></span><span>${esc(q.requirement)}<span class="tag ${q.must ? "must" : ""}">${q.must ? "must-have" : "nice-to-have"}</span><span class="ev" id="ev-${i}"></span></span></li>`).join("");
+    const musts = ev.questions.filter((q) => q.must).length;
+    sysLine(`Recruiter Agent built a scorecard from the job description: ${musts} must-haves, ${ev.questions.length - musts} nice-to-have${ev.questions.length - musts === 1 ? "" : "s"}`);
+    updateCount();
   } else if (ev.type === "question") {
     typing(false);
-    document.querySelector(`#req-${ev.i} .mark`)?.classList.add("ask");
-    const m = document.createElement("div"); m.className = "msg rec";
-    m.innerHTML = `<div class="who">Recruiter Agent → Candidate Agent</div><div class="bubble"></div>`;
+    if (!ev.followup) setMark(ev.i, "ask");
+    const m = document.createElement("div"); m.className = "msg rec" + (ev.followup ? " followup" : "");
+    m.innerHTML = `<div class="who">Recruiter Agent → Candidate Agent${ev.followup ? " · follow-up" : ""}</div><div class="bubble"></div>`;
     chat.appendChild(m); scroll();
     await typeInto(m.querySelector(".bubble"), ev.text);
+    if (ev.followup) m.insertAdjacentHTML("beforeend", `<div class="meta">${chip("probe", "probing for the measurable result")}</div>`);
     addRaw(m, "A2A request", ev.rpc, false);
     count++; $("#count").textContent = count;
   } else if (ev.type === "answer") {
@@ -242,21 +273,67 @@ async function handle(ev) {
       const sec = String(c.section || "").split(" > ").pop();
       meta.insertAdjacentHTML("beforeend", `<span class="cite" title="${esc(c.section)}">${DOC}${esc(c.note)}${sec && sec !== c.note ? " › " + esc(sec) : ""}</span>`);
     });
-    if (idk) meta.insertAdjacentHTML("beforeend", `<span class="status-idk">no evidence in notes</span>`);
+    (ev.nearest || []).forEach((c) => {
+      if (seen.has("near:" + c.note)) return; seen.add("near:" + c.note);
+      meta.insertAdjacentHTML("beforeend", `<span class="cite near" title="${esc(c.section)}">${DOC}nearest: ${esc(c.note)}</span>`);
+    });
+    if (idk) meta.insertAdjacentHTML("beforeend", ev.nearest && ev.nearest.length ? chip("probe", "gap, stated plainly") : `<span class="status-idk">no evidence in notes</span>`);
+    if (ev.thin) meta.insertAdjacentHTML("beforeend", chip("probe", "thin: no numbers yet"));
     m.appendChild(meta);
     addRaw(m, `A2A response · ${ev.ms} ms`, ev.rpc, false);
     $("#lat").textContent = ev.ms + " ms";
-    const mark = document.querySelector(`#req-${ev.i} .mark`);
-    if (mark) { mark.classList.remove("ask"); mark.classList.add(idk ? "no" : "ok"); mark.textContent = idk ? "–" : "✓"; }
+    const evEl = $(`#ev-${ev.i}`);
+    if (ev.thin) {
+      setMark(ev.i, "probe", "?");
+      thinNotes[ev.i] = [...new Set((ev.citations || []).map((c) => c.note))];
+    } else if (ev.followup || !idk) {
+      // A follow-up only adds depth: the item was already met by the first cited answer.
+      setMark(ev.i, "ok", "✓"); met[ev.i] = true;
+      const notes = [...new Set([...(thinNotes[ev.i] || []), ...(idk ? [] : (ev.citations || []).map((c) => c.note))])];
+      if (evEl) { evEl.className = "ev"; evEl.textContent = notes.join(", ") + (ev.followup ? " (probed)" : ""); }
+    } else {
+      setMark(ev.i, "no", "–");
+      if (evEl) { evEl.className = "ev gap"; evEl.textContent = "gap" + (ev.nearest && ev.nearest.length ? " · nearest: " + ev.nearest[0].note : ""); }
+    }
+    updateCount();
+    scroll();
+  } else if (ev.type === "invite") {
+    typing(false);
+    const m = document.createElement("div"); m.className = "msg rec";
+    m.innerHTML = `<div class="who">Recruiter Agent → Candidate Agent</div><div class="bubble"></div>`;
+    chat.appendChild(m); scroll();
+    await typeInto(m.querySelector(".bubble"), ev.text);
+    addRaw(m, "A2A request · intent ask_role", ev.rpc, false);
+  } else if (ev.type === "role_question") {
+    typing(false);
+    const m = document.createElement("div"); m.className = "msg cand";
+    m.innerHTML = `<div class="who">${esc(candName)}'s agent asks about the role</div><div class="bubble"></div>`;
+    chat.appendChild(m); scroll();
+    await typeInto(m.querySelector(".bubble"), ev.text);
+    m.insertAdjacentHTML("beforeend", `<div class="meta">${chip("ask", "two-way: the candidate side asks too")}</div>`);
+    scroll();
+  } else if (ev.type === "role_answer") {
+    typing(false);
+    const m = document.createElement("div"); m.className = "msg rec";
+    m.innerHTML = `<div class="who">Recruiter Agent → Candidate Agent</div><div class="bubble"></div>`;
+    chat.appendChild(m); scroll();
+    await typeInto(m.querySelector(".bubble"), ev.text);
+    m.insertAdjacentHTML("beforeend", `<div class="meta">${chip("facts", "answered from the job's own facts")}</div>`);
+    addRaw(m, "A2A request · intent role_answer", ev.rpc, false);
     scroll();
   } else if (ev.type === "verdict") {
     typing(false);
     const fit = ev.verdict === "Fit";
     const v = document.createElement("div"); v.className = "verdict " + (fit ? "fit" : "nofit");
     const li = (xs) => (xs || []).map((x) => `<li>${esc(x)}</li>`).join("") || "<li>none</li>";
-    v.innerHTML = `<div class="label">Recruiter Agent's verdict</div><div class="v">Verdict: ${fit ? "Fit" : "Not a fit"}</div>
+    const rows = (ev.scorecard || []).map((c) => {
+      const ok = c.status === "met";
+      const src = ok ? c.evidence.join(", ") + (c.probed ? " (probed)" : "") : "gap" + (c.nearest && c.nearest.length ? " · nearest: " + c.nearest.join(", ") : "");
+      return `<div class="row"><span class="mark ${ok ? "ok" : "no"}">${ok ? "✓" : "–"}</span><span>${esc(c.requirement)}<span class="tag ${c.must ? "must" : ""}">${c.must ? "must-have" : "nice-to-have"}</span></span><span class="src ${ok ? "" : "gap"}">${esc(src)}</span></div>`;
+    }).join("");
+    v.innerHTML = `<div class="label">Recruiter Agent's verdict, from the scorecard</div><div class="v">Verdict: ${fit ? "Fit" : "Not a fit"}</div>
       <div class="s">${esc(ev.summary)}</div>
-      <div class="cols"><div><h4>Backed by cited notes</h4><ul>${li(ev.matched)}</ul></div><div><h4>No evidence in notes</h4><ul>${li(ev.gaps)}</ul></div></div>`;
+      ${rows ? `<div class="score">${rows}</div>` : `<div class="cols"><div><h4>Backed by cited notes</h4><ul>${li(ev.matched)}</ul></div><div><h4>No evidence in notes</h4><ul>${li(ev.gaps)}</ul></div></div>`}`;
     chat.appendChild(v); scroll();
   } else if (ev.type === "error") {
     typing(false);

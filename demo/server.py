@@ -67,7 +67,7 @@ def make_handler(agent_url: str, pace: float):
                 jobs = {k: {f: v[f] for f in ("label", "title", "company", "sample_note", "description")}
                         for k, v in recruiter.JOBS.items()}
                 live = bool(os.environ.get("ANTHROPIC_API_KEY"))
-                body = {"jobs": jobs, "mode": f"Live: Claude {recruiter.MODEL}" if live else "Mock: no API key", "agent": agent_url,
+                body = {"jobs": jobs, "mode": f"Live: Claude {recruiter.MODEL}" if live else "No key: answers quote the notes", "agent": agent_url,
                         "candidate": {k: CANDIDATE[k] for k in ("name", "first", "role", "fictional")}}
                 return self._send(200, json.dumps(body).encode(), "application/json")
             if u.path == "/api/run":

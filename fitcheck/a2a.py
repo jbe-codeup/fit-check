@@ -3,6 +3,11 @@
   GET  /.well-known/agent-card.json   the agent card other agents discover
   POST /                               JSON-RPC 2.0, method "message/send"
 
+A message may carry a data part {"intent": ...}:
+  (none)          a career question, answered from the notes with citations
+  "ask_role"      the recruiter invites a question; the agent asks one about the role
+  "role_answer"   the recruiter's answer to that question; the agent notes it for the candidate
+
 The reply is an A2A Message with a text part (the answer) and a data part
 (status, citations, disclosure), so a calling agent gets sources it can show.
 
@@ -77,6 +82,27 @@ def _text_of(message: dict) -> str:
     return " ".join(p.get("text", "") for p in parts if p.get("kind", p.get("type")) == "text").strip()
 
 
+def _data_of(message: dict) -> dict:
+    for p in message.get("parts") or []:
+        if p.get("kind", p.get("type")) == "data" and isinstance(p.get("data"), dict):
+            return p["data"]
+    return {}
+
+
+def _reply(rid, message: dict, text: str, data: dict) -> dict:
+    return {
+        "jsonrpc": "2.0",
+        "id": rid,
+        "result": {
+            "kind": "message",
+            "role": "agent",
+            "messageId": str(uuid.uuid4()),
+            "contextId": message.get("contextId") or str(uuid.uuid4()),
+            "parts": [{"kind": "text", "text": text}, {"kind": "data", "data": data}],
+        },
+    }
+
+
 def _rpc_error(rid, code: int, msg: str) -> dict:
     return {"jsonrpc": "2.0", "id": rid, "error": {"code": code, "message": msg}}
 
@@ -93,35 +119,32 @@ def handle_rpc(req: dict, caller: str = "local") -> dict:
     if not question:
         return _rpc_error(rid, -32602, "params.message needs a text part")
 
+    intent = _data_of(message).get("intent")
+    if intent == "ask_role":
+        # Two-way: the candidate side gets to ask one question too (set in candidate.json).
+        q = C["questions_for_role"][0]
+        _log({"t": round(time.time()), "caller": caller, "intent": intent})
+        return _reply(rid, message, q, {"status": "question", "citations": [], "disclosure": answer.DISCLOSURE, "mode": "rule"})
+    if intent == "role_answer":
+        _log({"t": round(time.time()), "caller": caller, "intent": intent, "q": question[:500]})
+        return _reply(rid, message, f"Thanks, I'll pass that on to {C['first']}.",
+                      {"status": "noted", "citations": [], "disclosure": answer.DISCLOSURE, "mode": "rule"})
+
     started = time.time()
     r = answer.ask(question)
     _log({"t": round(started), "caller": caller, "q": question[:500], "status": r["status"],
           "ms": int((time.time() - started) * 1000)})
 
-    text = r["answer"]
-    return {
-        "jsonrpc": "2.0",
-        "id": rid,
-        "result": {
-            "kind": "message",
-            "role": "agent",
-            "messageId": str(uuid.uuid4()),
-            "contextId": message.get("contextId") or str(uuid.uuid4()),
-            "parts": [
-                {"kind": "text", "text": text},
-                {
-                    "kind": "data",
-                    "data": {
-                        "status": r["status"],
-                        "citations": r["citations"],
-                        "disclosure": r["disclosure"],
-                        "mode": r.get("mode") or ("claude" if r.get("model") else "rule"),
-                        "model": r.get("model"),
-                    },
-                },
-            ],
-        },
+    data = {
+        "status": r["status"],
+        "citations": r["citations"],
+        "disclosure": r["disclosure"],
+        "mode": r.get("mode") or ("claude" if r.get("model") else "rule"),
+        "model": r.get("model"),
     }
+    if r.get("nearest_citations"):
+        data["nearest_citations"] = r["nearest_citations"]  # a gap, with the closest real experience
+    return _reply(rid, message, r["answer"], data)
 
 
 _log_lock = threading.Lock()

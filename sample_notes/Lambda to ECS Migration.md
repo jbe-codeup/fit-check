@@ -11,6 +11,7 @@ The ingest service ran as a Python Lambda behind SQS. At peak it hit concurrency
 
 ## What I did
 
+- Owned the migration end to end: the design, the Terraform, the rollout plan and the on-call runbook.
 - Rewrote the hot path in Go as a long-running consumer on ECS Fargate, keeping the same message contract.
 - Ran the new service in shadow mode for two weeks, comparing every output with the Lambda's and alerting on any mismatch.
 - Shifted traffic in steps (5%, 25%, 50%, 100%) with a one-command rollback.
@@ -21,3 +22,7 @@ The ingest service ran as a Python Lambda behind SQS. At peak it hit concurrency
 - Zero downtime and zero lost messages during the cutover.
 - p99 latency went from 900 ms to 120 ms.
 - Monthly cost dropped about 35% because we stopped paying for idle concurrency.
+
+## Scale
+
+- Scaled the new consumer service to about 4,000 events per second at peak, with headroom to double it.

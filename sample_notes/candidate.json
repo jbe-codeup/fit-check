@@ -3,5 +3,8 @@
   "pronoun": "they",
   "role": "staff backend engineer (fictional sample candidate)",
   "contact": "contact Sam Rivera directly (this is a fictional sample candidate)",
-  "fictional": true
+  "fictional": true,
+  "questions_for_role": [
+    "Is this role funded and actively hiring?"
+  ]
 }

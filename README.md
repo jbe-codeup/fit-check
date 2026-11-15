@@ -5,10 +5,19 @@ Two AI agents check job fit with each other over the [A2A protocol](https://a2a-
 - **The candidate agent** is a candidate's AI representative. It answers only from the candidate's own notes, cites the note behind every answer, and says "I don't know" when the notes don't cover something.
 - **The recruiter agent** reads a job description, finds the candidate agent through its agent card, interviews it, and gives a verdict.
 
+A screening round goes like this:
+
+1. **Scorecard.** The recruiter turns the job description into must-haves and nice-to-haves. Each one is checked off only when a cited answer backs it.
+2. **Screening questions.** "Tell me about a system the candidate scaled", "What did they own end to end?", "Walk me through a production incident", "Why are they looking?" Every answer is quoted from the candidate's stories, with the note it came from.
+3. **Follow-up probe.** When an answer has no numbers in it, the recruiter asks once for the measurable result.
+4. **Honest gaps.** When the notes have nothing on a skill, the candidate agent says so plainly and gives the nearest real experience instead of stretching.
+5. **Two-way.** The candidate agent gets to ask a question too ("Is this role funded and actively hiring?"), answered from the job's own facts.
+6. **Verdict.** Fit or Not a fit, citing the scorecard.
+
 The repo ships with a fictional sample candidate (Sam Rivera) and two sample jobs:
 
-- **Job 1, Principal Backend Engineer:** the answers come back with citations, and the run ends with **Verdict: Fit**.
-- **Job 2, Senior iOS Engineer:** the candidate agent says it has no evidence for Swift, UIKit or mobile profiling, and the run ends with **Verdict: Not a fit**.
+- **Job 1, Principal Backend Engineer:** five screening questions answered with citations, one probe, and **Verdict: Fit** (4 of 4 must-haves).
+- **Job 2, Senior iOS Engineer:** the candidate agent calls Swift, UIKit and mobile profiling gaps, names the nearest real experience, and the run ends with **Verdict: Not a fit**.
 
 ## Run it
 
@@ -60,7 +69,9 @@ To pull an allowlisted subset out of an Obsidian vault, and strip coaching text 
 question
   -> personal topic? (salary, family, health...)  -> "That's a question for the candidate directly"
   -> local retrieval over the notes, split by heading
-  -> best match below the threshold?               -> "I don't know, here's how to reach them"   (no model call)
+  -> best match below the threshold?               -> a known adjacent skill (Kubernetes, Rust, iOS...)?
+                                                        -> "No evidence of that, treat it as a gap. Nearest real experience: ..."
+                                                     -> otherwise "I don't know, here's how to reach them"   (no model call)
   -> Claude answers from the top excerpts only, as structured JSON with cited chunk ids
   -> no valid citation?                             -> "I don't know"
   -> spend cap / rate limit / overload?             -> "I'm at my limit right now, please try again later"
@@ -81,7 +92,9 @@ curl localhost:8787/ -H 'content-type: application/json' -d '{
     "parts": [{"kind": "text", "text": "Has the candidate built anything with RAG or MCP?"}]}}}'
 ```
 
-The reply is an A2A `Message` with two parts: a `text` part holding the answer, and a `data` part holding `status`, `citations` and `disclosure`. `fitcheck/a2a.py` also exposes `lambda_handler`, so the same agent can run as a serverless function (for example on AWS Amplify or a Lambda function URL).
+The reply is an A2A `Message` with two parts: a `text` part holding the answer, and a `data` part holding `status`, `citations` and `disclosure` (plus `nearest_citations` on a gap).
+
+A message can also carry a `data` part with an `intent`. `{"intent": "ask_role"}` invites the candidate agent to ask its question about the role (set by `questions_for_role` in `candidate.json`), and `{"intent": "role_answer"}` hands it the recruiter's answer. `fitcheck/a2a.py` also exposes `lambda_handler`, so the same agent can run as a serverless function (for example on AWS Amplify or a Lambda function URL).
 
 ## Evals
 
@@ -116,7 +129,7 @@ fitcheck/      config.py  prep.py (vault -> notes)  retrieval.py (ingest + searc
 demo/          recruiter.py (screening agent)  server.py (page + SSE)  web/index.html  jobs.json (sample jobs)
 sample_notes/  the fictional sample candidate
 evals/         questions.json  run_evals.py
-tests/         test_answer.py
+tests/         test_answer.py  test_interview.py
 ```
 
 ## Next
