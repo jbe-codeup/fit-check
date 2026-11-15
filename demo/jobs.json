@@ -4,7 +4,7 @@
     "title": "Principal Backend Engineer",
     "company": "Sample Co.",
     "sample_note": "Sample job description written for this demo, not a real posting.",
-    "description": "Sample Co. is hiring a Principal Backend Engineer to own the design and reliability of our core platform. You will build and scale event-driven services in Go and Python on AWS Lambda, keep cold starts and costs down, make them safe to retry, own them end to end including on-call and observability, lead projects across teams and mentor engineers. Experience with LLM tooling (MCP, RAG, evals) is a plus.",
+    "description": "Sample Co. is hiring a Principal Backend Engineer to own the design and reliability of our core platform. You will design event-driven services in Go and Python on AWS Lambda and make the trade-offs behind them, keep cold starts and concurrency under control, handle failures and retries safely, debug them under load, own them end to end including on-call, lead projects across teams and mentor engineers. Experience with LLM tooling (MCP, RAG, evals) is a plus.",
     "questions": [
       {
         "q": "What has the candidate owned end to end, including on-call?",
@@ -13,32 +13,32 @@
         "by": "hm"
       },
       {
-        "q": "Walk me through an event-driven pipeline the candidate built on AWS Lambda, and how much traffic it handled.",
-        "requirement": "Event-driven services on AWS Lambda",
+        "q": "Why did the candidate pick Lambda over containers here, and what was the trade-off?",
+        "requirement": "Design trade-offs: Lambda vs containers",
         "must": true,
         "by": "eng"
       },
       {
-        "q": "How did the candidate deal with Lambda cold starts and concurrency limits?",
-        "requirement": "Lambda cold starts and concurrency",
+        "q": "At peak, how did the candidate keep cold starts and concurrency limits in check?",
+        "requirement": "Lambda at scale: cold starts, concurrency",
         "must": true,
         "by": "eng"
       },
       {
-        "q": "How does the candidate keep retries from processing the same event twice?",
-        "requirement": "Idempotency and safe retries",
+        "q": "What happens when one poison message lands in a batch, and how do retries avoid applying an update twice?",
+        "requirement": "Poison messages and safe retries",
         "must": true,
         "by": "eng"
       },
       {
-        "q": "How does the candidate monitor a service and get alerted when it breaks?",
-        "requirement": "Observability and on-call",
+        "q": "When p99 latency spikes under load, how does the candidate track down the cause?",
+        "requirement": "Debugging under load",
         "must": true,
         "by": "eng"
       },
       {
         "q": "Tell me about a time the candidate got several teams to agree on a change.",
-        "requirement": "Cross-team leadership",
+        "requirement": "Stakeholders: cross-team leadership",
         "must": true,
         "by": "hm"
       },

@@ -1,7 +1,7 @@
 """The interview panel: reads a job description, interviews the candidate agent over A2A, and gives a verdict.
 
 The panel is two agents: a Hiring Manager agent (ownership, cross-team work, motivation, team fit) and a
-Senior Engineer agent (scale, performance, retries, observability; it probes thin answers). They
+Senior Engineer agent (design trade-offs, failure modes, debugging under load, scale; it probes thin answers). They
 share one scorecard and give one combined verdict. Each A2A request says which of them
 is asking in a data part ({"from": ...}).
 
@@ -44,7 +44,7 @@ MAX_PROBES = int(os.environ.get("FITCHECK_MAX_PROBES", "1"))
 # share one scorecard and give one combined verdict.
 PANEL = {
     "hm": {"name": "Hiring Manager Agent", "initials": "HM", "focus": "the role's owner: ownership, business impact, cross-team work, team fit"},
-    "eng": {"name": "Senior Engineer Agent", "initials": "SE", "focus": "Lambda depth: traffic, cold starts, retries, observability; probes thin answers"},
+    "eng": {"name": "Senior Engineer Agent", "initials": "SE", "focus": "senior-level depth: design trade-offs, failure modes, debugging under load, scale; probes thin answers"},
 }
 TECH = re.compile(r"lambda|cold start|concurren|retr|idempot|monitor|observab|alert|scal|throughput|incident|outage|latency|architect|design|go\b|python|aws|kubernetes|ios|swift|profil|database|api", re.I)
 
@@ -175,7 +175,7 @@ VERDICT_SCHEMA = {
 }
 
 RECRUITER_SYSTEM = """You are a two-agent screening panel: a Hiring Manager agent (ownership, cross-team work, motivation, team fit) and a
-Senior Engineer agent (scale, performance, retries, observability); each asks its own questions. You are interviewing another agent, the candidate agent,
+Senior Engineer agent (design trade-offs, failure modes, debugging under load, scale); each asks its own questions. You are interviewing another agent, the candidate agent,
 which represents a candidate and answers only from the candidate's own notes, with citations.
 Be fair and evidence-based: count a requirement as met only if an answer with citations supports it.
 "I don't know" means there is no evidence, not that the candidate lacks the skill; say "no evidence in their notes"."""
@@ -188,9 +188,9 @@ def plan_questions(job: dict, live: bool) -> tuple[list[dict], str]:
                 RECRUITER_SYSTEM,
                 "Job description:\n" + job["description"] +
                 "\n\nWrite exactly 6 short screening questions about the candidate (call them 'the candidate'), "
-                "three from each asker, one per key requirement, most important first. Mark must-haves with must=true (at most 5). "
-                "The two askers have different roles and never overlap: by='eng' (Senior Engineer) for how it was built: "
-                "architecture, scale, performance, retries, observability; by='hm' (Hiring Manager) for ownership, "
+                "at least as many from the Senior Engineer as from the Hiring Manager, one per key requirement, most important first. Mark must-haves with must=true (at most 5). "
+                "The two askers have different roles and never overlap: by='eng' (Senior Engineer) asks at a senior engineer's level: "
+                "design trade-offs, failure modes and retries, debugging under load, scale with numbers; by='hm' (Hiring Manager) for ownership, "
                 "business impact, cross-team work, motivation and team fit.",
                 QUESTION_SCHEMA,
             )

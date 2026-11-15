@@ -59,6 +59,13 @@
   .eng .bubble { background: #1d1838; border-color: #3f2e6b; }
   .rec.eng.followup .bubble { border-color: #6b4fb0; }
   .who b { font-weight: 600; }
+  .role { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; padding: 4px 13px 4px 4px; border-radius: 999px; margin-right: 4px; vertical-align: middle; }
+  .role i { font-style: normal; font-size: 11px; font-weight: 800; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; color: #0a0e16; }
+  .role.hm { background: #1a2042; color: var(--rec); border: 1px solid #343d78; } .role.hm i { background: var(--rec); }
+  .role.eng { background: #221a42; color: var(--eng); border: 1px solid #4a3275; } .role.eng i { background: var(--eng); }
+  .msg.rec.hm .bubble { border-left: 3px solid var(--rec); }
+  .msg.rec.eng .bubble { border-left: 3px solid var(--eng); }
+  .msg.rec .who { margin-bottom: 6px; }
   .who b.hm { color: var(--rec); }
   .who b.eng { color: var(--eng); }
   .agent.cand .av { background: var(--cand-bg); color: var(--cand); border: 1px solid #1d5a50; }
@@ -154,7 +161,7 @@
     <div class="agents">
       <div class="panel-agents" title="The interview panel">
         <div class="agent rec hm"><div class="av">HM</div><div><div class="n">Hiring Manager Agent</div><div class="d">ownership, impact, team fit</div></div></div>
-        <div class="agent rec eng"><div class="av">SE</div><div><div class="n">Senior Engineer Agent</div><div class="d">Lambda depth, retries</div></div></div>
+        <div class="agent rec eng"><div class="av">SE</div><div><div class="n">Senior Engineer Agent</div><div class="d">design, failures, scale</div></div></div>
       </div>
       <div class="agent cand"><div class="av" id="cand-av">C</div><div><div class="n">Candidate Agent</div><div class="d"><span id="cand-desc">the candidate's AI representative</span> · <a class="link" id="card-link">agent card</a></div></div></div>
     </div>
@@ -201,7 +208,8 @@ function setMark(i, cls, txt) {
 }
 const PANEL = { hm: "Hiring Manager Agent", eng: "Senior Engineer Agent" };
 const by = (ev) => (PANEL[ev.by] ? ev.by : "hm");
-const asker = (ev) => `<b class="${by(ev)}">${PANEL[by(ev)]}</b>`;
+const ROLE = { hm: ["HM", "Hiring Manager"], eng: ["SE", "Senior Engineer"] };
+const asker = (ev) => `<span class="role ${by(ev)}"><i>${ROLE[by(ev)][0]}</i>${ROLE[by(ev)][1]}</span>`;
 function chip(cls, text) { return `<span class="flag ${cls}">${esc(text)}</span>`; }
 function scroll() { chat.scrollTop = chat.scrollHeight; }
 function typing(on, who) {

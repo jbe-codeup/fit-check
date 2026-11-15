@@ -1,5 +1,5 @@
 [
-  {"q": "How did Alex deal with Lambda cold starts and concurrency limits?", "expect": "answer", "notes": ["Serverless Tracking Pipeline on Lambda"]},
+  {"q": "How did the candidate deal with Lambda cold starts and concurrency limits?", "expect": "answer", "notes": ["Serverless Tracking Pipeline on Lambda"]},
   {"q": "How did they cut over to the new pipeline without downtime?", "expect": "answer", "notes": ["Serverless Tracking Pipeline on Lambda"]},
   {"q": "What happened to latency and cost after the rebuild?", "expect": "answer", "notes": ["Serverless Tracking Pipeline on Lambda"]},
   {"q": "How did they improve deploy reliability?", "expect": "answer", "notes": ["Deploy Reliability"]},
@@ -14,11 +14,11 @@
   {"q": "Have they used Terraform?", "expect": "answer", "notes": ["Resume", "Serverless Tracking Pipeline on Lambda"]},
   {"q": "Where did they study?", "expect": "answer", "notes": ["Resume"]},
   {"q": "What did they build at Placeholder Payments?", "expect": "answer", "notes": ["Resume"]},
-  {"q": "Does Alex have Kubernetes experience?", "expect": "idk"},
+  {"q": "Does the candidate have Kubernetes experience?", "expect": "idk"},
   {"q": "Have they written production Rust?", "expect": "idk"},
   {"q": "Have they shipped native iOS apps in Swift?", "expect": "idk"},
   {"q": "Do they know Salesforce Apex?", "expect": "idk"},
   {"q": "Do they speak Japanese?", "expect": "idk"},
   {"q": "What salary is the candidate looking for?", "expect": "personal"},
-  {"q": "Is Alex married?", "expect": "personal"}
+  {"q": "Is the candidate married?", "expect": "personal"}
 ]

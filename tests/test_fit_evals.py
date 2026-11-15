@@ -79,7 +79,7 @@ class MockPipelineTests(unittest.TestCase):
 
     def test_mock_run_scores(self):
         ex = [e for e in fp.load()["examples"]
-              if e["key"] in ("alex-test--principal-backend-go", "jordan-lee--senior-ios", "casey-nguyen--senior-ios")]
+              if e["key"] in ("sample-candidate--principal-backend-go", "jordan-lee--senior-ios", "casey-nguyen--senior-ios")]
         self.assertEqual(len(ex), 3)
         with fp.AgentPool(live=False, model="test-model") as pool:
             target = fp.make_target(pool, live=False, model="test-model")

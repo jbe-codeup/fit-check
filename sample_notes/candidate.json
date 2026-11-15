@@ -2,7 +2,6 @@
   "name": "Alex Test",
   "pronoun": "they",
   "role": "staff backend engineer (fictional test candidate)",
-  "contact": "contact Alex Test directly (this is a fictional test candidate)",
   "fictional": true,
   "questions_for_role": [
     "Is this role funded and actively hiring?"

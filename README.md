@@ -3,7 +3,7 @@
 Two AI agents check job fit with each other over the [A2A protocol](https://a2a-protocol.org).
 
 - **The candidate agent** is a candidate's AI representative. It answers only from the candidate's own notes, cites the note behind every answer, and says "I don't know" when the notes don't cover something.
-- **The interview panel** is two agents: a **Hiring Manager agent** (ownership, cross-team work, motivation and team fit) and a **Senior Engineer agent** (how it was built: scale, performance, retries, observability). Each has its own questions, with no overlap. They read a job description, find the candidate agent through its agent card, both question it over A2A, share one scorecard and give one verdict.
+- **The interview panel** is two agents: a **Hiring Manager agent** (ownership, cross-team work, motivation and team fit) and a **Senior Engineer agent** (senior-level depth: design trade-offs, failure modes, debugging under load, scale). Each has its own questions, with no overlap. They read a job description, find the candidate agent through its agent card, both question it over A2A, share one scorecard and give one verdict.
 
 A screening round goes like this:
 
@@ -14,7 +14,7 @@ A screening round goes like this:
 5. **Two-way.** The candidate agent gets to ask a question too ("Is this role funded and actively hiring?"), answered from the job's own facts.
 6. **Verdict.** Fit or Not a fit, citing the scorecard.
 
-The repo ships with a fictional sample candidate (Alex Test) and two sample jobs:
+The repo ships with a fictional sample candidate (its name is the one line in `sample_notes/candidate.json`) and two sample jobs:
 
 - **Job 1, Principal Backend Engineer:** five screening questions answered with citations, one probe, and **Verdict: Fit** (4 of 4 must-haves).
 - **Job 2, Senior iOS Engineer:** the candidate agent calls Swift, UIKit and mobile profiling gaps, names the nearest real experience, and the run ends with **Verdict: Not a fit**.
@@ -116,7 +116,7 @@ Current result: **22/22**. To score your own notes, keep your own eval file next
 
 The retrieval evals above check single answers. These check the whole pipeline: does the recruiter agent reach the right verdict, and is every answer it relied on grounded in the candidate's notes?
 
-**The dataset** is `evals/fit/pairs.json`: 25 job and candidate pairs, each labelled Fit or Not a fit with a one-line rationale. 9 are Fit, 16 are Not a fit, and 9 are marked borderline (for example a backend engineer with Terraform and CI/CD but no Kubernetes, applying to a Kubernetes platform role). There are three fictional candidates: Alex Test (`sample_notes/`), plus Jordan Lee, an iOS engineer, and Casey Nguyen, a data engineer, in `evals/fit/candidates/`. The 14 sample jobs are in `evals/fit/jobs.json`. Bump `version` in `pairs.json` when you change labels.
+**The dataset** is `evals/fit/pairs.json`: 25 job and candidate pairs, each labelled Fit or Not a fit with a one-line rationale. 9 are Fit, 16 are Not a fit, and 9 are marked borderline (for example a backend engineer with Terraform and CI/CD but no Kubernetes, applying to a Kubernetes platform role). There are three fictional candidates: the demo candidate (`sample_notes/`), plus Jordan Lee, an iOS engineer, and Casey Nguyen, a data engineer, in `evals/fit/candidates/`. The 14 sample jobs are in `evals/fit/jobs.json`. Bump `version` in `pairs.json` when you change labels.
 
 **What each run measures**
 
