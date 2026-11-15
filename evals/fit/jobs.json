@@ -1,0 +1,414 @@
+{
+  "principal-backend-go": {
+    "title": "Principal Backend Engineer",
+    "company": "Sample Co.",
+    "description": "Sample Co. is hiring a Principal Backend Engineer to own the design and reliability of our core platform. You will build high-throughput services in Go and Python on AWS (Lambda, ECS, S3), lead migrations with no downtime, raise the reliability of our CI/CD and data pipelines, lead projects across teams and mentor engineers. Hands-on experience building LLM tooling (MCP servers, RAG, evals) is a plus.",
+    "questions": [
+      {
+        "q": "Which languages does the candidate use for backend services, and have they shipped Go in production?",
+        "requirement": "Go and Python backend services",
+        "must": true
+      },
+      {
+        "q": "Has the candidate designed or migrated services on AWS, like Lambda or ECS?",
+        "requirement": "AWS service design and migrations",
+        "must": true
+      },
+      {
+        "q": "How has the candidate improved the reliability of a production pipeline?",
+        "requirement": "Production reliability and CI/CD",
+        "must": true
+      },
+      {
+        "q": "Has the candidate led cross-team projects or mentored engineers?",
+        "requirement": "Technical leadership and mentoring",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built AI tooling with LLMs, MCP or RAG?",
+        "requirement": "LLM tooling (MCP, RAG, evals)",
+        "must": false
+      }
+    ],
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting."
+  },
+  "senior-ios": {
+    "title": "Senior iOS Engineer",
+    "company": "Sample Co.",
+    "description": "Sample Co. is hiring a Senior iOS Engineer to build our consumer iPhone app. You will ship features in Swift and SwiftUI, work deep in Xcode, UIKit and Core Data, profile and tune app performance with Instruments, and own App Store releases. Android experience with Kotlin and Jetpack Compose is a plus, as is mentoring other engineers.",
+    "questions": [
+      {
+        "q": "Has the candidate shipped native iOS apps in Swift or SwiftUI?",
+        "requirement": "Native iOS in Swift / SwiftUI",
+        "must": true
+      },
+      {
+        "q": "Has the candidate worked with Xcode, UIKit or Core Data?",
+        "requirement": "Xcode, UIKit, Core Data",
+        "must": true
+      },
+      {
+        "q": "Has the candidate done mobile performance profiling with Instruments?",
+        "requirement": "Mobile performance profiling",
+        "must": true
+      },
+      {
+        "q": "Does the candidate have experience with Kotlin and Jetpack Compose?",
+        "requirement": "Android with Kotlin / Compose",
+        "must": false
+      },
+      {
+        "q": "Has the candidate mentored other engineers?",
+        "requirement": "Mentoring",
+        "must": false
+      }
+    ],
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting."
+  },
+  "staff-ios-performance": {
+    "title": "Staff iOS Engineer, Performance",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. needs a Staff iOS Engineer to own the speed and reliability of our iPhone app. You will profile launch time and scrolling with Instruments, build offline-first features on Core Data, ship in Swift and SwiftUI, run App Store releases and mentor other iOS engineers.",
+    "questions": [
+      {
+        "q": "Has the candidate cut app launch time or fixed performance problems with Instruments?",
+        "requirement": "iOS performance profiling",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built offline features with Core Data?",
+        "requirement": "Offline-first with Core Data",
+        "must": true
+      },
+      {
+        "q": "Has the candidate shipped apps in Swift and SwiftUI?",
+        "requirement": "Swift and SwiftUI",
+        "must": true
+      },
+      {
+        "q": "Has the candidate owned App Store releases?",
+        "requirement": "App Store release ownership",
+        "must": true
+      },
+      {
+        "q": "Has the candidate mentored other iOS engineers?",
+        "requirement": "Mentoring",
+        "must": false
+      }
+    ]
+  },
+  "android-engineer": {
+    "title": "Senior Android Engineer",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. is hiring a Senior Android Engineer to lead our Android app. You will ship features in Kotlin with Jetpack Compose, own Google Play releases and tune performance on low-end Android devices.",
+    "questions": [
+      {
+        "q": "Has the candidate shipped Android apps in Kotlin?",
+        "requirement": "Shipped Android apps in Kotlin",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built screens with Jetpack Compose?",
+        "requirement": "Jetpack Compose",
+        "must": true
+      },
+      {
+        "q": "Has the candidate owned Google Play Store releases?",
+        "requirement": "Google Play releases",
+        "must": true
+      },
+      {
+        "q": "Has the candidate worked on offline sync for a mobile app?",
+        "requirement": "Mobile offline sync",
+        "must": false
+      }
+    ]
+  },
+  "mobile-eng-manager": {
+    "title": "Engineering Manager, Mobile",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. is looking for an Engineering Manager to lead a team of six iOS and Android engineers. You will hire, run performance reviews and career growth, own the mobile roadmap with product, and keep a hand in technical decisions.",
+    "questions": [
+      {
+        "q": "Has the candidate managed a team of engineers as their direct manager?",
+        "requirement": "People management of a team",
+        "must": true
+      },
+      {
+        "q": "Has the candidate hired engineers and run interview loops?",
+        "requirement": "Hiring",
+        "must": true
+      },
+      {
+        "q": "Has the candidate written performance reviews or promotion cases?",
+        "requirement": "Performance reviews",
+        "must": true
+      },
+      {
+        "q": "Does the candidate have hands-on mobile engineering experience?",
+        "requirement": "Mobile engineering background",
+        "must": false
+      }
+    ]
+  },
+  "senior-data-engineer": {
+    "title": "Senior Data Engineer",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. is hiring a Senior Data Engineer to build our streaming and batch data platform. You will build pipelines in Python and SQL with Kafka and Spark, orchestrate them in Airflow, model the warehouse in dbt on Snowflake, and own data quality.",
+    "questions": [
+      {
+        "q": "Has the candidate built streaming pipelines with Kafka or Spark?",
+        "requirement": "Kafka and Spark pipelines",
+        "must": true
+      },
+      {
+        "q": "Has the candidate orchestrated pipelines with Airflow?",
+        "requirement": "Airflow orchestration",
+        "must": true
+      },
+      {
+        "q": "Has the candidate modeled a warehouse with dbt or Snowflake?",
+        "requirement": "dbt and Snowflake modeling",
+        "must": true
+      },
+      {
+        "q": "How has the candidate handled data quality checks?",
+        "requirement": "Data quality",
+        "must": true
+      },
+      {
+        "q": "Has the candidate run data infrastructure on AWS?",
+        "requirement": "AWS data infrastructure",
+        "must": false
+      }
+    ]
+  },
+  "data-platform-aws": {
+    "title": "Data Platform Engineer (AWS)",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. needs a Data Platform Engineer to run our data platform on AWS. You will operate EMR or Glue jobs, Kafka or Kinesis streams and S3 data lakes, manage it all in Terraform, and write Python tooling for the data team.",
+    "questions": [
+      {
+        "q": "Has the candidate run Spark on AWS EMR or Glue?",
+        "requirement": "EMR or Glue",
+        "must": true
+      },
+      {
+        "q": "Has the candidate operated Kafka or Kinesis streams?",
+        "requirement": "Kafka or Kinesis",
+        "must": true
+      },
+      {
+        "q": "Has the candidate managed data infrastructure with Terraform?",
+        "requirement": "Terraform",
+        "must": true
+      },
+      {
+        "q": "Does the candidate write Python tooling?",
+        "requirement": "Python",
+        "must": true
+      }
+    ]
+  },
+  "analytics-engineer": {
+    "title": "Analytics Engineer",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. is hiring an Analytics Engineer to own our warehouse models. You will write SQL and dbt models on Snowflake, add tests, build dashboards in Looker, and teach analysts to ship their own models.",
+    "questions": [
+      {
+        "q": "Has the candidate built dbt models with tests?",
+        "requirement": "dbt models and tests",
+        "must": true
+      },
+      {
+        "q": "Has the candidate worked in Snowflake?",
+        "requirement": "Snowflake",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built dashboards in Looker or a similar tool?",
+        "requirement": "Dashboards",
+        "must": true
+      },
+      {
+        "q": "Has the candidate taught or mentored analysts?",
+        "requirement": "Teaching analysts",
+        "must": false
+      }
+    ]
+  },
+  "ml-engineer": {
+    "title": "Machine Learning Engineer",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. is hiring a Machine Learning Engineer to train and serve ranking models. You will train models in PyTorch, build feature pipelines, deploy models for low-latency serving, and track experiments.",
+    "questions": [
+      {
+        "q": "Has the candidate trained machine learning models with PyTorch or TensorFlow?",
+        "requirement": "Model training in PyTorch",
+        "must": true
+      },
+      {
+        "q": "Has the candidate deployed models for online serving?",
+        "requirement": "Model serving",
+        "must": true
+      },
+      {
+        "q": "Has the candidate tracked ML experiments with a tool like MLflow?",
+        "requirement": "Experiment tracking",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built feature pipelines?",
+        "requirement": "Feature pipelines",
+        "must": false
+      }
+    ]
+  },
+  "staff-platform-k8s": {
+    "title": "Staff Platform Engineer (Kubernetes)",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. needs a Staff Platform Engineer to run our Kubernetes platform. You will operate EKS clusters, write Helm charts and operators, manage infrastructure in Terraform, and improve CI/CD and observability for 40 service teams.",
+    "questions": [
+      {
+        "q": "Has the candidate operated Kubernetes or EKS clusters in production?",
+        "requirement": "Kubernetes operations",
+        "must": true
+      },
+      {
+        "q": "Has the candidate written Helm charts or Kubernetes operators?",
+        "requirement": "Helm and operators",
+        "must": true
+      },
+      {
+        "q": "Has the candidate managed infrastructure with Terraform?",
+        "requirement": "Terraform",
+        "must": true
+      },
+      {
+        "q": "How has the candidate improved CI/CD or observability?",
+        "requirement": "CI/CD and observability",
+        "must": false
+      }
+    ]
+  },
+  "backend-python-payments": {
+    "title": "Senior Backend Engineer, Payments",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. is hiring a Senior Backend Engineer for payments. You will build Python services with FastAPI and Postgres, own reconciliation between the bank and the ledger, and keep service contracts safe with tests.",
+    "questions": [
+      {
+        "q": "Has the candidate built backend services in Python, for example with FastAPI?",
+        "requirement": "Python backend services",
+        "must": true
+      },
+      {
+        "q": "Has the candidate worked on payments, ledgers or reconciliation?",
+        "requirement": "Payments and reconciliation",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built services on Postgres?",
+        "requirement": "Postgres",
+        "must": true
+      },
+      {
+        "q": "Has the candidate used contract tests between services?",
+        "requirement": "Contract testing",
+        "must": false
+      }
+    ]
+  },
+  "ai-tooling-engineer": {
+    "title": "AI Tooling Engineer",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. is hiring an engineer to build internal LLM tools. You will build RAG over our docs, write MCP servers for our assistants, run eval sets on every change, and ship it all as reliable backend services in Python or Go.",
+    "questions": [
+      {
+        "q": "Has the candidate built RAG over internal documents?",
+        "requirement": "RAG",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built an MCP server?",
+        "requirement": "MCP servers",
+        "must": true
+      },
+      {
+        "q": "Has the candidate run eval sets for an LLM feature?",
+        "requirement": "LLM evals",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built backend services in Python or Go?",
+        "requirement": "Python or Go backend",
+        "must": false
+      }
+    ]
+  },
+  "frontend-react": {
+    "title": "Senior Frontend Engineer (React)",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. is hiring a Senior Frontend Engineer to build our web app in React and TypeScript. You will own our design system components, make every screen accessible to WCAG 2.1 AA, and tune web performance.",
+    "questions": [
+      {
+        "q": "Has the candidate built web apps in React?",
+        "requirement": "React",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built or maintained a design system?",
+        "requirement": "Design system",
+        "must": true
+      },
+      {
+        "q": "Has the candidate made web pages accessible to WCAG standards?",
+        "requirement": "Web accessibility",
+        "must": true
+      },
+      {
+        "q": "Does the candidate use TypeScript?",
+        "requirement": "TypeScript",
+        "must": false
+      }
+    ]
+  },
+  "staff-backend-reliability": {
+    "title": "Staff Engineer, Backend Reliability",
+    "company": "Sample Co.",
+    "sample_note": "Sample job description written for fitcheck evals, not a real posting.",
+    "description": "Sample Co. needs a Staff Engineer to make our backend boring in the best way. You will raise deploy success and CI reliability, run zero-downtime migrations on AWS, build observability dashboards, and lead reliability work across teams.",
+    "questions": [
+      {
+        "q": "How has the candidate improved deploy or CI reliability?",
+        "requirement": "Deploy and CI reliability",
+        "must": true
+      },
+      {
+        "q": "Has the candidate run a zero-downtime migration on AWS?",
+        "requirement": "Zero-downtime AWS migrations",
+        "must": true
+      },
+      {
+        "q": "Has the candidate built observability dashboards, for example in Datadog?",
+        "requirement": "Observability",
+        "must": true
+      },
+      {
+        "q": "Has the candidate led work across several teams?",
+        "requirement": "Cross-team leadership",
+        "must": true
+      }
+    ]
+  }
+}
