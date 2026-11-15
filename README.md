@@ -3,12 +3,21 @@
 Two AI agents check job fit with each other over the [A2A protocol](https://a2a-protocol.org).
 
 - **The candidate agent** is a candidate's AI representative. It answers only from the candidate's own notes, cites the note behind every answer, and says "I don't know" when the notes don't cover something.
-- **The recruiter agent** reads a job description, finds the candidate agent through its agent card, interviews it, and gives a verdict.
+- **The interview panel** is two agents: a **Hiring Manager agent** (ownership, cross-team work, motivation and team fit) and a **Senior Engineer agent** (senior-level depth: design trade-offs, failure modes, debugging under load, scale). Each has its own questions, with no overlap. They read a job description, find the candidate agent through its agent card, both question it over A2A, share one scorecard and give one verdict.
 
-The repo ships with a fictional sample candidate (Sam Rivera) and two sample jobs:
+A screening round goes like this:
 
-- **Job 1, Principal Backend Engineer:** the answers come back with citations, and the run ends with **Verdict: Fit**.
-- **Job 2, Senior iOS Engineer:** the candidate agent says it has no evidence for Swift, UIKit or mobile profiling, and the run ends with **Verdict: Not a fit**.
+1. **Scorecard.** The panel turns the job description into must-haves and nice-to-haves. Each one is checked off only when a cited answer backs it.
+2. **Screening questions.** "Tell me about a system the candidate scaled", "What did they own end to end?", "Walk me through a production incident", "Why are they looking?" Every answer is quoted from the candidate's stories, with the note it came from.
+3. **Follow-up probe.** When a technical answer has no numbers in it, the Senior Engineer agent asks once for the measurable result.
+4. **Honest gaps.** When the notes have nothing on a skill, the candidate agent says so plainly and gives the nearest real experience instead of stretching.
+5. **Two-way.** The candidate agent gets to ask a question too ("Is this role funded and actively hiring?"), answered from the job's own facts.
+6. **Verdict.** Fit or Not a fit, citing the scorecard.
+
+The repo ships with a fictional sample candidate (its name is the one line in `sample_notes/candidate.json`) and two sample jobs:
+
+- **Job 1, Principal Backend Engineer:** five screening questions answered with citations, one probe, and **Verdict: Fit** (4 of 4 must-haves).
+- **Job 2, Senior iOS Engineer:** the candidate agent calls Swift, UIKit and mobile profiling gaps, names the nearest real experience, and the run ends with **Verdict: Not a fit**.
 
 ## Run it
 
@@ -19,24 +28,27 @@ make demo          # opens http://127.0.0.1:8788, pick Job 1 or Job 2 (or press 
 make demo-cli      # the same two interviews in the terminal
 ```
 
-Live mode puts Claude on both sides: it writes the candidate agent's answers and the recruiter's questions and verdict.
+Live mode puts Claude on both sides: it writes the candidate agent's answers and the panel's questions and verdict.
 
 ```bash
-pip install -r requirements.txt
+pip install -U -r requirements.txt  # -U matters: anthropic 0.77+ is needed for structured outputs
 export ANTHROPIC_API_KEY=...        # your own key, in your own shell; never committed
+make check                          # one line: is the key accepted, is the model available, is the package new enough
 make demo
 ```
+
+`make demo` runs the same check when it starts. If a live call fails later, the real reason (error type, status and message, never the key) is printed in the terminal where the demo runs, while the page shows a generic reply.
 
 The model defaults to Claude Haiku (`claude-haiku-5-5`). Set `FITCHECK_MODEL` to change it.
 
 Each live run is saved under `build/recordings/`, which is gitignored. To replay the last live take without spending tokens, for example for a screen recording, open the page with `?replay=1`.
 
-| Mode | Candidate agent | Recruiter agent |
+| Mode | Candidate agent | Interview panel |
 |---|---|---|
 | Mock (no key) | Quotes the best matching sentences from the notes, with citations. Nothing is generated. | Scripted questions from `demo/jobs.json`. Fit only if every must-have got a cited answer. |
 | Live (`ANTHROPIC_API_KEY`) | Claude answers from the retrieved excerpts only, and must cite them. | Claude writes the questions from the job description and the verdict from the transcript. |
 
-The A2A traffic is real in both modes. The candidate agent runs as its own process on `:8787`, and the recruiter only reaches it over HTTP JSON-RPC.
+The A2A traffic is real in both modes. The candidate agent runs as its own process on `:8787`, and the panel only reaches it over HTTP JSON-RPC.
 
 ## Use your own notes
 
@@ -60,7 +72,9 @@ To pull an allowlisted subset out of an Obsidian vault, and strip coaching text 
 question
   -> personal topic? (salary, family, health...)  -> "That's a question for the candidate directly"
   -> local retrieval over the notes, split by heading
-  -> best match below the threshold?               -> "I don't know, here's how to reach them"   (no model call)
+  -> best match below the threshold?               -> a known adjacent skill (Kubernetes, Rust, iOS...)?
+                                                        -> "No evidence of that, treat it as a gap. Nearest real experience: ..."
+                                                     -> otherwise "I don't know, here's how to reach them"   (no model call)
   -> Claude answers from the top excerpts only, as structured JSON with cited chunk ids
   -> no valid citation?                             -> "I don't know"
   -> spend cap / rate limit / overload?             -> "I'm at my limit right now, please try again later"
@@ -81,7 +95,9 @@ curl localhost:8787/ -H 'content-type: application/json' -d '{
     "parts": [{"kind": "text", "text": "Has the candidate built anything with RAG or MCP?"}]}}}'
 ```
 
-The reply is an A2A `Message` with two parts: a `text` part holding the answer, and a `data` part holding `status`, `citations` and `disclosure`. `fitcheck/a2a.py` also exposes `lambda_handler`, so the same agent can run as a serverless function (for example on AWS Amplify or a Lambda function URL).
+The reply is an A2A `Message` with two parts: a `text` part holding the answer, and a `data` part holding `status`, `citations` and `disclosure` (plus `nearest_citations` on a gap).
+
+A message can also carry a `data` part with an `intent`. `{"intent": "ask_role"}` invites the candidate agent to ask its question about the role (set by `questions_for_role` in `candidate.json`), and `{"intent": "role_answer"}` hands it the panel's answer. A `from` field says which panel agent is asking. `fitcheck/a2a.py` also exposes `lambda_handler`, so the same agent can run as a serverless function (for example on AWS Amplify or a Lambda function URL).
 
 ## Evals
 
@@ -103,7 +119,7 @@ Current result: **22/22**. To score your own notes, keep your own eval file next
 
 The retrieval evals above check single answers. These check the whole pipeline: does the recruiter agent reach the right verdict, and is every answer it relied on grounded in the candidate's notes?
 
-**The dataset** is `evals/fit/pairs.json`: 25 job and candidate pairs, each labelled Fit or Not a fit with a one-line rationale. 9 are Fit, 16 are Not a fit, and 9 are marked borderline (for example a backend engineer with Terraform and CI/CD but no Kubernetes, applying to a Kubernetes platform role). There are three fictional candidates: Sam Rivera (`sample_notes/`), plus Jordan Lee, an iOS engineer, and Casey Nguyen, a data engineer, in `evals/fit/candidates/`. The 14 sample jobs are in `evals/fit/jobs.json`. Bump `version` in `pairs.json` when you change labels.
+**The dataset** is `evals/fit/pairs.json`: 25 job and candidate pairs, each labelled Fit or Not a fit with a one-line rationale. 9 are Fit, 16 are Not a fit, and 9 are marked borderline (for example a backend engineer with Terraform and CI/CD but no Kubernetes, applying to a Kubernetes platform role). There are three fictional candidates: the demo candidate (`sample_notes/`), plus Jordan Lee, an iOS engineer, and Casey Nguyen, a data engineer, in `evals/fit/candidates/`. The 14 sample jobs are in `evals/fit/jobs.json`. Bump `version` in `pairs.json` when you change labels.
 
 **What each run measures**
 
@@ -169,11 +185,11 @@ These settings are already supported:
 
 ```
 fitcheck/      config.py  prep.py (vault -> notes)  retrieval.py (ingest + search)  answer.py (cited answers)  a2a.py (agent)
-demo/          recruiter.py (screening agent)  server.py (page + SSE)  web/index.html  jobs.json (sample jobs)
+demo/          recruiter.py (the two-agent interview panel)  server.py (page + SSE)  web/index.html  jobs.json (sample jobs)
 sample_notes/  the fictional sample candidate
 evals/         questions.json  run_evals.py  (retrieval evals)
                fit/  fit_pipeline.py  langsmith_dataset.py  langsmith_experiment.py  (fit-verdict evals)
-tests/         test_answer.py  test_fit_evals.py
+tests/         test_answer.py  test_fit_evals.py  test_interview.py
 ```
 
 ## Next

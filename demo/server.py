@@ -67,7 +67,7 @@ def make_handler(agent_url: str, pace: float):
                 jobs = {k: {f: v[f] for f in ("label", "title", "company", "sample_note", "description")}
                         for k, v in recruiter.JOBS.items()}
                 live = bool(os.environ.get("ANTHROPIC_API_KEY"))
-                body = {"jobs": jobs, "mode": f"Live: Claude {recruiter.MODEL}" if live else "Mock: no API key", "agent": agent_url,
+                body = {"jobs": jobs, "mode": f"Live: Claude {recruiter.MODEL}" if live else "No key: answers quote the notes", "agent": agent_url,
                         "candidate": {k: CANDIDATE[k] for k in ("name", "first", "role", "fictional")}}
                 return self._send(200, json.dumps(body).encode(), "application/json")
             if u.path == "/api/run":
@@ -112,6 +112,12 @@ def make_handler(agent_url: str, pace: float):
 def run_demo(url: str | None = None, port: int = 8788, agent_port: int = 8787, fast: bool = False,
              open_browser: bool = True, cli_jobs: list[str] | None = None) -> int:
     proc = None
+    if os.environ.get("ANTHROPIC_API_KEY"):
+        from fitcheck import llm
+
+        ok, line = llm.key_check()
+        print(line + ("" if ok else "\n  Live answers will fail until this is fixed. Unset ANTHROPIC_API_KEY to run the no-key demo."),
+              file=sys.stderr if not ok else sys.stdout, flush=True)
     if not url:
         proc = start_agent(agent_port)
         url = f"http://127.0.0.1:{agent_port}"

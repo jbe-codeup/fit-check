@@ -9,8 +9,8 @@ Staff backend engineer with 10 years building event-driven services in Go and Py
 ## Experience
 
 ### Example Freight Co. (fictional), Staff Backend Engineer, 2021 to present
-- Own the shipment-tracking platform: Go services on AWS ECS Fargate, SQS, DynamoDB and S3, about 4,000 events per second at peak.
-- Led the move of the tracking ingest service from Lambda to ECS with no downtime.
+- Own the shipment-tracking platform: Go on AWS Lambda with SQS, EventBridge, DynamoDB and S3, about 4,000 events per second at peak.
+- Rebuilt the tracking ingest pipeline on Lambda with no downtime.
 - Raised deploy success for the monorepo from 71% to 98%.
 - Built a ticket triage assistant with RAG and an MCP server for internal docs.
 
@@ -21,7 +21,7 @@ Staff backend engineer with 10 years building event-driven services in Go and Py
 ## Skills
 
 - Languages: Go, Python, TypeScript, SQL
-- AWS: Lambda, ECS Fargate, SQS, SNS, DynamoDB, S3, CloudWatch
+- AWS: Lambda, SQS, SNS, EventBridge, DynamoDB, S3, CloudWatch, X-Ray
 - Infrastructure: Terraform, Docker, GitHub Actions, Datadog
 - AI tooling: RAG, MCP servers, LLM evals
 

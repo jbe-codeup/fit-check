@@ -5,7 +5,9 @@ to the fictional sample candidate in sample_notes/. Point it at your own notes t
 run the demo about yourself; keep that folder out of git.
 
 The folder may hold a candidate.json:
-  {"name": "...", "pronoun": "he|she|they", "role": "...", "contact": "reach out to ... on LinkedIn"}
+  {"name": "...", "pronoun": "he|she|they", "role": "...", "contact": "reach out to ... on LinkedIn",
+   "questions_for_role": ["What does on-call look like for this team?"]}
+questions_for_role is what the candidate agent asks a recruiter's agent when invited to ask about the role.
 """
 from __future__ import annotations
 
@@ -75,5 +77,6 @@ def candidate() -> dict:
         "role": data.get("role", ""),
         "contact": contact,
         "fictional": bool(data.get("fictional")),
+        "questions_for_role": data.get("questions_for_role") or ["How big is the team, and what does on-call look like?"],
         **pronoun,
     }

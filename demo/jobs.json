@@ -4,33 +4,54 @@
     "title": "Principal Backend Engineer",
     "company": "Sample Co.",
     "sample_note": "Sample job description written for this demo, not a real posting.",
-    "description": "Sample Co. is hiring a Principal Backend Engineer to own the design and reliability of our core platform. You will build high-throughput services in Go and Python on AWS (Lambda, ECS, S3), lead migrations with no downtime, raise the reliability of our CI/CD and data pipelines, lead projects across teams and mentor engineers. Hands-on experience building LLM tooling (MCP servers, RAG, evals) is a plus.",
+    "description": "Sample Co. is hiring a Principal Backend Engineer to own the design and reliability of our core platform. You will design event-driven services in Go and Python on AWS Lambda and make the trade-offs behind them, keep cold starts and concurrency under control, handle failures and retries safely, debug them under load, own them end to end including on-call, lead projects across teams and mentor engineers. Experience with LLM tooling (MCP, RAG, evals) is a plus.",
     "questions": [
       {
-        "q": "Which languages does the candidate use for backend services, and have they shipped Go in production?",
-        "requirement": "Go and Python backend services",
-        "must": true
+        "q": "What has the candidate owned end to end, including on-call?",
+        "requirement": "Ownership end to end",
+        "must": true,
+        "by": "hm"
       },
       {
-        "q": "Has the candidate designed or migrated services on AWS, like Lambda or ECS?",
-        "requirement": "AWS service design and migrations",
-        "must": true
+        "q": "Why did the candidate pick Lambda over containers here, and what was the trade-off?",
+        "requirement": "Design trade-offs: Lambda vs containers",
+        "must": true,
+        "by": "eng"
       },
       {
-        "q": "How has the candidate improved the reliability of a production pipeline?",
-        "requirement": "Production reliability and CI/CD",
-        "must": true
+        "q": "At peak, how did the candidate keep cold starts and concurrency limits in check?",
+        "requirement": "Lambda at scale: cold starts, concurrency",
+        "must": true,
+        "by": "eng"
       },
       {
-        "q": "Has the candidate led cross-team projects or mentored engineers?",
-        "requirement": "Technical leadership and mentoring",
-        "must": true
+        "q": "What happens when one poison message lands in a batch, and how do retries avoid applying an update twice?",
+        "requirement": "Poison messages and safe retries",
+        "must": true,
+        "by": "eng"
       },
       {
-        "q": "Has the candidate built AI tooling with LLMs, MCP or RAG?",
-        "requirement": "LLM tooling (MCP, RAG, evals)",
-        "must": false
+        "q": "When p99 latency spikes under load, how does the candidate track down the cause?",
+        "requirement": "Debugging under load",
+        "must": true,
+        "by": "eng"
+      },
+      {
+        "q": "Tell me about a time the candidate got several teams to agree on a change.",
+        "requirement": "Stakeholders: cross-team leadership",
+        "must": true,
+        "by": "hm"
+      },
+      {
+        "q": "What kind of team does the candidate want to join next?",
+        "requirement": "Motivation and team fit",
+        "must": false,
+        "by": "hm"
       }
+    ],
+    "role_facts": [
+      "Yes: the headcount is approved and funded, and we're interviewing this month.",
+      "The team reads every screening report within two days."
     ]
   },
   "notfit": {
@@ -41,30 +62,26 @@
     "description": "Sample Co. is hiring a Senior iOS Engineer to build our consumer iPhone app. You will ship features in Swift and SwiftUI, work deep in Xcode, UIKit and Core Data, profile and tune app performance with Instruments, and own App Store releases. Android experience with Kotlin and Jetpack Compose is a plus, as is mentoring other engineers.",
     "questions": [
       {
-        "q": "Has the candidate shipped native iOS apps in Swift or SwiftUI?",
-        "requirement": "Native iOS in Swift / SwiftUI",
-        "must": true
+        "q": "Has the candidate built SwiftUI screens for an App Store release?",
+        "requirement": "Native iOS (Swift, SwiftUI)",
+        "must": true,
+        "by": "eng"
       },
       {
-        "q": "Has the candidate worked with Xcode, UIKit or Core Data?",
-        "requirement": "Xcode, UIKit, Core Data",
-        "must": true
-      },
-      {
-        "q": "Has the candidate done mobile performance profiling with Instruments?",
+        "q": "Has the candidate profiled iPhone app launch time with Instruments?",
         "requirement": "Mobile performance profiling",
-        "must": true
+        "must": true,
+        "by": "eng"
       },
       {
-        "q": "Does the candidate have experience with Kotlin and Jetpack Compose?",
-        "requirement": "Android with Kotlin / Compose",
-        "must": false
-      },
-      {
-        "q": "Has the candidate mentored other engineers?",
+        "q": "Does the candidate coach other engineers?",
         "requirement": "Mentoring",
-        "must": false
+        "must": false,
+        "by": "hm"
       }
+    ],
+    "role_facts": [
+      "Yes: the headcount is approved and funded, and we're interviewing now."
     ]
   }
 }

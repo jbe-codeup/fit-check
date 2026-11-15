@@ -3,6 +3,9 @@
 Order of checks, cheapest first, so most refusals never call a model:
 1. Personal or sensitive topic (salary, family, health...)  -> polite redirect to the candidate.
 2. Retrieval below the similarity threshold                  -> "I don't know, here's how to reach them".
+   For a skill the notes don't cover but that sits next to one they do (iOS next to
+   backend APIs, Kubernetes next to containers), it says plainly that it's a gap and quotes
+   the nearest real experience, cited separately as nearest_citations.
 3. Claude (Haiku by default) answers ONLY from the retrieved chunks and must
    cite at least one of them; an answer with no valid citation becomes "I don't know".
 4. Spend-limit / rate-limit / overload errors                -> friendly "I'm at my limit" message.
@@ -16,7 +19,7 @@ import os
 import re
 from functools import lru_cache
 
-from . import config
+from . import config, llm
 from .config import MODEL, THRESHOLD, TOP_K
 from .retrieval import Retriever, ensure_index
 
@@ -25,6 +28,7 @@ CONTACT = C["contact"]
 DISCLOSURE = f"I'm {C['name']}'s AI representative, answering only from {C['pos']} own career notes."
 IDK = f"I don't know. {C['name']}'s notes don't cover that, so the best way to find out is to {CONTACT}."
 PERSONAL = f"That's a question for {C['name']} directly rather than {C['pos']} AI representative. Please {CONTACT}."
+GAP = f"No evidence of that in {C['first']}'s notes, so treat it as a gap. Nearest real experience: \u201c{{quote}}\u201d"
 AT_LIMIT = f"I'm at my limit right now. Please try again later, or {CONTACT}."
 ERROR = f"Something went wrong on my side. Please try again later, or {CONTACT}."
 
@@ -61,6 +65,16 @@ SCHEMA = {
     "required": ["can_answer", "answer", "cited_chunks"],
     "additionalProperties": False,
 }
+
+
+# Skill families the notes may not mention, mapped to a query for the nearest real experience.
+# Used only after normal retrieval found nothing, so it can never turn a gap into a "yes".
+ADJACENT = [
+    (re.compile(r"\b(profil\w*|instruments|app performance|performance tuning)\b", re.I), "p99 latency went from"),
+    (re.compile(r"\b(rust|java|scala|c\+\+|kotlin)\b", re.I), "languages go python typescript"),
+    (re.compile(r"\b(ios|swift\w*|xcode|uikit|core data|android|jetpack|mobile|iphone)\b", re.I), "backend engineer event-driven services go python aws"),
+    (re.compile(r"\b(kubernetes|k8s|helm|eks)\b", re.I), "fresh containers github actions docker"),
+]
 
 
 @lru_cache(maxsize=1)
@@ -102,6 +116,10 @@ def ask(question: str, client=None, dry_run: bool | None = None) -> dict:
 
     hits, ok = retrieve(question)
     if not ok:
+        near = nearest(question)
+        if near:
+            quote, cite = near
+            return _result("idk", GAP.format(quote=quote), hits=hits, nearest_citations=[cite])
         return _result("idk", IDK, hits=hits)
 
     if dry_run is None:
@@ -110,6 +128,32 @@ def ask(question: str, client=None, dry_run: bool | None = None) -> dict:
         return _extractive(question, hits)
 
     return _generate(question, hits, client)
+
+
+def nearest(question: str) -> tuple[str, dict] | None:
+    """For a skill the notes don't cover: the one note sentence closest to it, or None."""
+    from .retrieval import expand, tokenize
+
+    for rx, query in ADJACENT:
+        if not rx.search(question):
+            continue
+        hits = retriever().search(query, k=3)
+        if not hits or hits[0]["score"] < THRESHOLD:
+            return None
+        terms = set(expand(tokenize(query)))
+        best = None
+        for h in hits:
+            for sent in re.split(r"(?<=[.!?])\s+|\n+", h["text"]):
+                s = _plain(sent)
+                if 30 <= len(s) <= 200 and not s.lower().startswith(("summary", "fictional")):
+                    score = len(terms & set(tokenize(s))) + 0.3 * bool(re.search(r"\d", s)) + h["score"]
+                    if best is None or score > best[0]:
+                        best = (score, s, h)
+        if best:
+            s = best[1]
+            return (s if s[-1] in ".!?" else s + "."), _citation(best[2])
+        return None
+    return None
 
 
 def _plain(text: str) -> str:
@@ -125,6 +169,8 @@ def _extractive(question: str, hits: list[dict]) -> dict:
     from .retrieval import expand, tokenize
 
     terms = set(expand(tokenize(question)))
+    # A follow-up asking for scale or results should get the sentences with numbers in them.
+    wants_numbers = bool(re.search(r"\b(scale|result|results|outcome|impact|measur\w*|metrics?|numbers?|how much|how many)\b", question, re.I))
     pool = list(hits[:3])
     # A story's one-paragraph summary is usually the best short answer; add it to the pool.
     summary = next((c for c in retriever().chunks if c["note"] == hits[0]["note"] and c["text"].lstrip("> ").startswith("Summary")), None)
@@ -134,18 +180,27 @@ def _extractive(question: str, hits: list[dict]) -> dict:
     for rank, h in enumerate(pool):
         for i, sent in enumerate(re.split(r"(?<=[.!?])[\u201d\"]?\s+(?=[A-Z\u201c\"])|\n+", h["text"])):
             s = _plain(sent)
-            if len(s) < 40 or len(s) > 320 or s.endswith("?") or s.lower().startswith(("summary", "competencies", "good answer")):
+            if len(s) < (25 if re.search(r"\d", s) else 40) or len(s) > 320 or s.endswith("?") or s.lower().startswith(("summary", "competencies", "good answer")):
                 continue
             overlap = len(terms & set(tokenize(s)))
+            if wants_numbers and h["note"] == hits[0]["note"] and re.search(r"\d", s):
+                overlap += 1  # a number from the same story answers "how big / how well"
             if overlap:
-                bonus = (0.5 * bool(re.search(r"\d", s))
-                         + 0.3 * bool(re.search(r"result|summary|skills", h["heading"], re.I))
+                bonus = ((2.5 if wants_numbers else 0.5) * bool(re.search(r"\d", s))
+                         + (1.0 if wants_numbers else 0.3) * bool(re.search(r"result|summary|skills", h["heading"], re.I))
                          + 1.0 * (h is pool[-1] and h["id"] == (summary or {}).get("id")))
                 scored.append((overlap + bonus + h["score"] - min(rank, 3) * 0.05, rank, i, s, h))
     if not scored:
         top = hits[0]
         scored = [(0, 0, 0, _plain(top["text"])[:300], top)]
-    best = sorted(scored, key=lambda x: -x[0])[:2]
+    ranked = sorted(scored, key=lambda x: -x[0])
+    best = ranked[:1]
+    nums = lambda t: set(re.findall(r"\d+", t))
+    for cand in ranked[1:]:
+        a, b = nums(best[0][3]), nums(cand[3])
+        if cand[3] != best[0][3] and not (b and (b <= a or a <= b)):
+            best.append(cand)  # skip a second sentence that only repeats the first one's numbers
+            break
     if summary and best[0][4]["id"] == summary["id"]:
         # The summary is the strongest match: quote it whole, it's written to stand alone.
         quoted = [ln for ln in summary["text"].splitlines() if ln.lstrip().startswith(">")]
@@ -172,7 +227,7 @@ def _generate(question: str, hits: list[dict], client=None) -> dict:
     try:
         resp = client.messages.create(
             model=MODEL,
-            max_tokens=2000,
+            max_tokens=4000,
             system=SYSTEM,
             output_config={"effort": "low", "format": {"type": "json_schema", "schema": SCHEMA}},
             messages=[{"role": "user", "content": f"Note excerpts:\n\n{excerpts}\n\nQuestion: {question}"}],
@@ -181,11 +236,13 @@ def _generate(question: str, hits: list[dict], client=None) -> dict:
         return _api_error(e, hits)
 
     if resp.stop_reason == "refusal":
+        llm.log("candidate agent", "Claude declined to answer (stop_reason refusal); replying I don't know.")
         return _result("idk", IDK, hits=hits)
     text = next((b.text for b in resp.content if getattr(b, "type", "") == "text"), "")
     try:
         data = json.loads(text)
     except (json.JSONDecodeError, TypeError):
+        llm.log("candidate agent", f"Claude's reply wasn't valid JSON (stop_reason {resp.stop_reason}); replying I don't know.")
         return _result("idk", IDK, hits=hits)
 
     by_id = {h["id"]: h for h in hits}
@@ -196,6 +253,7 @@ def _generate(question: str, hits: list[dict], client=None) -> dict:
 
 
 def _api_error(e: Exception, hits: list[dict]) -> dict:
+    llm.log_error("candidate agent", e)  # the real reason goes to the terminal; the reply stays generic
     status = getattr(e, "status_code", None)
     etype = getattr(e, "type", "") or ""
     msg = str(e).lower()

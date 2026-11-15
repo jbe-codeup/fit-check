@@ -3,10 +3,13 @@ PY ?= python3
 NOTES ?= sample_notes
 export FITCHECK_NOTES = $(NOTES)
 
-.PHONY: demo demo-cli serve ingest eval eval-live eval-fit eval-dataset eval-experiment test
+.PHONY: check demo demo-cli serve ingest eval eval-live eval-fit eval-dataset eval-experiment test
 
 demo:            ## open the two-job interview page (no key = mock mode)
 	$(PY) -m fitcheck demo
+
+check:           ## one-line check that the key, model and anthropic package work (live mode)
+	$(PY) -m fitcheck check
 
 demo-cli:        ## same interviews, printed in the terminal
 	$(PY) -m fitcheck demo --cli both
