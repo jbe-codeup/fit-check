@@ -167,15 +167,17 @@ QUESTION_SCHEMA = {
     "additionalProperties": False,
 }
 
+# The verdict follows from a per-must-have call: Claude names the must-haves without cited evidence,
+# and the panel says Fit exactly when that list is empty. So a Not a fit always names its reason.
 VERDICT_SCHEMA = {
     "type": "object",
     "properties": {
-        "verdict": {"type": "string", "enum": ["Fit", "Not a fit"]},
+        "unmet_must_haves": {"type": "array", "items": {"type": "string"}},
         "summary": {"type": "string"},
         "matched": {"type": "array", "items": {"type": "string"}},
         "gaps": {"type": "array", "items": {"type": "string"}},
     },
-    "required": ["verdict", "summary", "matched", "gaps"],
+    "required": ["unmet_must_haves", "summary", "matched", "gaps"],
     "additionalProperties": False,
 }
 
@@ -183,6 +185,8 @@ RECRUITER_SYSTEM = """You are a two-agent screening panel: a Hiring Manager agen
 Senior Engineer agent (design trade-offs, failure modes, debugging under load, scale); each asks its own questions. You are interviewing another agent, the candidate agent,
 which represents a candidate and answers only from the candidate's own notes, with citations.
 Be fair and evidence-based: count a requirement as met only if an answer with citations supports it.
+A cited answer that shows real hands-on experience with the requirement meets it; it does not need to match every word of the
+job description or be perfect. Nice-to-haves never decide the verdict.
 "I don't know" means there is no evidence, not that the candidate lacks the skill; say "no evidence in their notes"."""
 
 
@@ -193,7 +197,11 @@ def plan_questions(job: dict, live: bool) -> tuple[list[dict], str]:
                 RECRUITER_SYSTEM,
                 "Job description:\n" + job["description"] +
                 "\n\nWrite exactly 6 short screening questions about the candidate (call them 'the candidate'), "
-                "at least as many from the Senior Engineer as from the Hiring Manager, one per key requirement, most important first. Mark must-haves with must=true (at most 5). "
+                "at least as many from the Senior Engineer as from the Hiring Manager, one per key requirement, most important first. "
+                "Each question covers one requirement that the job description states. Ask about what the candidate has done, never "
+                "hypotheticals like 'how would you...', because the candidate's agent answers only from the candidate's own notes. "
+                "Mark must-haves with must=true (at most 5): core requirements the description states as part of the job. "
+                "Anything the description calls 'a plus', 'nice to have' or 'bonus' is must=false. "
                 "The two askers have different roles and never overlap: by='eng' (Senior Engineer) asks at a senior engineer's level: "
                 "design trade-offs, failure modes and retries, debugging under load, scale with numbers; by='hm' (Hiring Manager) for ownership, "
                 "business impact, cross-team work, motivation and team fit.",
@@ -233,6 +241,26 @@ def rule_verdict(turns: list[dict]) -> dict:
             "scorecard": card, "by": "rule"}
 
 
+def match_unmet(names: list[str], turns: list[dict]) -> list[str]:
+    """Map Claude's unmet list onto the scorecard's must-haves. A name that is clearly a
+    nice-to-have is dropped (nice-to-haves never decide the verdict); a name that matches
+    nothing stays, so an unclear answer leans to Not a fit rather than a false Fit."""
+    norm = lambda s: " ".join(re.findall(r"[a-z0-9]+", s.lower()))
+    musts = {norm(t["requirement"]): t["requirement"] for t in turns if t["must"]}
+    nices = {norm(t["requirement"]) for t in turns if not t["must"]}
+    out = []
+    for name in names:
+        n = norm(name)
+        if not n:
+            continue
+        hit = next((orig for k, orig in musts.items() if k == n or k in n or n in k), None)
+        if hit:
+            out.append(hit)
+        elif not any(k == n or k in n or n in k for k in nices):
+            out.append(name)
+    return list(dict.fromkeys(out))
+
+
 def judge(job: dict, turns: list[dict], live: bool) -> dict:
     if live:
         try:
@@ -242,14 +270,20 @@ def judge(job: dict, turns: list[dict], live: bool) -> dict:
                 + (f"\nFollow-up A: {t['followup']}" if t.get("followup") else "")
                 for t in turns
             )
+            musts = [t["requirement"] for t in turns if t["must"]]
             out = _claude(
                 RECRUITER_SYSTEM,
                 f"Job description:\n{job['description']}\n\nInterview transcript:\n{transcript}\n\n"
-                "Give the verdict. It is Fit only if every must-have is supported by a cited answer. "
-                "Summary: 1-2 sentences a hiring manager can read in five seconds.",
+                f"Must-haves: {json.dumps(musts)}\n\n"
+                "unmet_must_haves: copy the exact name of each must-have above that no cited answer supports; leave it empty if every one is supported. "
+                "A must-have is met when a cited answer shows real hands-on experience with it; it does not "
+                "need to match every word of the job description or be perfect. Fit when every must-have is met this way; "
+                "Not a fit when any must-have has no cited evidence. Nice-to-haves never decide the verdict. "
+                "Summary: 1-2 sentences a hiring manager can read in five seconds; it calls the candidate a fit exactly when unmet_must_haves is empty.",
                 VERDICT_SCHEMA,
             )
-            return {**out, "scorecard": scorecard(turns), "by": "claude"}
+            unmet = match_unmet(out.pop("unmet_must_haves"), turns)
+            return {**out, "verdict": "Not a fit" if unmet else "Fit", "unmet": unmet, "scorecard": scorecard(turns), "by": "claude"}
         except Exception as e:
             llm.log_error("recruiter, verdict", e)
             return {**rule_verdict(turns), "by": f"rule (Claude unavailable: {type(e).__name__})"}
