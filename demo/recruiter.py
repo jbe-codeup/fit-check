@@ -21,8 +21,11 @@ Two modes:
   - no key (default): questions come from the job's script in demo/jobs.json and
     the verdict is a plain rule: Fit only if every must-have got a cited answer.
   - ANTHROPIC_API_KEY set: Claude (FITCHECK_MODEL, Haiku by default) writes the
-    questions from the job description and writes the verdict from the transcript.
-    If a call fails it falls back to the script / rule and says so.
+    scorecard from the job description, and the panel runs as a team: the two agents are
+    separate Claude calls that read the shared transcript and, before each question, propose
+    who asks what next, including follow-ups on each other's topics (see _team_loop).
+    Each gives its own read, then the panel agrees a verdict or flags a split.
+    If a call fails it falls back to the planned questions / rule and says so.
 """
 from __future__ import annotations
 
@@ -256,14 +259,229 @@ def judge(job: dict, turns: list[dict], live: bool) -> dict:
     return rule_verdict(turns)
 
 
+
+# ---------------------------------------------------------------- the panel as a team (live mode)
+# With a key, the Hiring Manager and the Senior Engineer are two separate Claude calls, each
+# with its own role and goals. Before every question both read the job, the shared scorecard
+# and the transcript so far, and each proposes a move: ask a new topic, follow up on an
+# answer (often one their teammate's question surfaced), or pass. A small floor rule picks
+# whose move goes ahead. At the end each gives its own read, and the panel agrees a verdict
+# or flags a split. Without a key the interview stays scripted, so tests and evals are stable.
+MAX_TURNS = int(os.environ.get("FITCHECK_MAX_TURNS", "0"))  # 0 = scorecard rows + 3 follow-ups
+MAX_FOLLOWUPS_PER_TOPIC = 1
+
+TEAM_COMMON = """You are one of two agents on a screening panel that is interviewing another agent, the candidate agent.
+The candidate agent represents a candidate and answers only from the candidate's own notes, with citations.
+Call the person "the candidate". Your teammate sees the same job, scorecard and transcript. Work as a team:
+don't repeat what has been answered, build on each other's questions, and leave topics in your teammate's area to them unless you have a sharp follow-up.
+Be fair and evidence-based: a requirement is met only if an answer with citations supports it. "I don't know" means no evidence in the notes, not a missing skill."""
+
+ROLE_SYSTEM = {
+    "hm": TEAM_COMMON + """
+
+You are the Hiring Manager agent. You own the role. Your goals: what the candidate owned end to end, business impact,
+how they work across teams, why they are looking, and team fit. You don't run technical deep dives; hand those to the Senior Engineer.
+Follow up when an answer leaves the candidate's own part, the scope or the outcome for the business unclear.""",
+    "eng": TEAM_COMMON + """
+
+You are the Senior Engineer agent. Your goals: senior-level depth. Design trade-offs and why, failure modes and retries,
+debugging under load, scale with real numbers. Drill into vague or number-free claims, including technical claims
+that come up in answers to the Hiring Manager's questions. Ask one precise question at a time, the way a senior engineer would in a loop.""",
+}
+
+MOVE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "action": {"type": "string", "enum": ["ask", "follow_up", "pass"]},
+        "topic": {"type": "integer"},
+        "question": {"type": "string"},
+        "why": {"type": "string"},
+        "urgency": {"type": "integer"},
+    },
+    "required": ["action", "topic", "question", "why", "urgency"],
+    "additionalProperties": False,
+}
+
+READ_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "verdict": {"type": "string", "enum": ["Fit", "Not a fit"]},
+        "read": {"type": "string"},
+    },
+    "required": ["verdict", "read"],
+    "additionalProperties": False,
+}
+
+
+def _clip(text: str, n: int = 600) -> str:
+    text = " ".join(str(text).split())
+    return text if len(text) <= n else text[: n - 3] + "..."
+
+
+def _board(job: dict, rows: list[dict], log: list[dict]) -> str:
+    lines = ["Job description:", job["description"], "", "Shared scorecard (topic number: requirement):"]
+    for i, r in enumerate(rows):
+        kind = "must-have" if r["must"] else "nice-to-have"
+        if not r["asked"]:
+            state = "not asked yet"
+        else:
+            state = ("met, cites " + ", ".join(notes_of(r["citations"]))) if r["status"] == "answered" else "no evidence so far"
+            state += f"; follow-ups so far: {r['followups']}"
+        lines.append(f"  {i}: {r['requirement']} ({kind}) - {state}. Suggested opener: {r['q']}")
+    lines += ["", "Transcript so far:" if log else "Transcript so far: nothing yet, this is the first question."]
+    for t in log:
+        who = PANEL[t["by"]]["name"].replace(" Agent", "")
+        lines.append(f"  [{who}, topic {t['i']}{', follow-up' if t['followup'] else ''}] Q: {t['q']}")
+        lines.append(f"  [Candidate agent, {t['status']}{', cites ' + ', '.join(t['notes']) if t['notes'] else ''}] A: {_clip(t['a'])}")
+    return "\n".join(lines)
+
+
+def _move_prompt(by: str, board: str, left: int, unasked: list[int], must_cover: bool) -> str:
+    mate = "Senior Engineer" if by == "hm" else "Hiring Manager"
+    rule = (f"Only {left} question(s) left and topics {unasked} are not asked yet, so you must ask one of those (action 'ask')."
+            if must_cover else
+            f"{left} question(s) left in the interview. Topics not asked yet: {unasked or 'none'}.")
+    return (board + "\n\n" + rule + "\n\nPropose your next move. action: 'ask' a topic not asked yet (prefer your own area), "
+            f"'follow_up' to drill into an answer already given (often to one the {mate} asked, when it was vague, had no numbers, "
+            f"or raised something in your area; at most {MAX_FOLLOWUPS_PER_TOPIC} follow-up per topic), or 'pass' if your teammate should go next or you have nothing worth asking. "
+            "topic: the scorecard number. question: one sentence, addressed to the candidate agent. "
+            "why: one short line a viewer reads, saying why you're asking this now (e.g. 'Drilling into the retry claim from the HM's question'). "
+            "urgency: 1 to 5, how much this question matters right now.")
+
+
+def propose_moves(job: dict, rows: list[dict], log: list[dict], left: int, must_cover: bool) -> dict:
+    from concurrent.futures import ThreadPoolExecutor
+
+    board = _board(job, rows, log)
+    unasked = [i for i, r in enumerate(rows) if not r["asked"]]
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futs = {by: pool.submit(_claude, ROLE_SYSTEM[by], _move_prompt(by, board, left, unasked, must_cover), MOVE_SCHEMA)
+                for by in PANEL}
+        return {by: f.result() for by, f in futs.items()}
+
+
+def pick_move(moves: dict, rows: list[dict], asked: dict, must_cover: bool) -> dict | None:
+    """The floor rule: the most urgent valid move goes first; on a tie a follow-up beats a new
+    topic, then whoever has asked less. Near the cap, only unasked topics, so every row is covered."""
+    cands = []
+    for by, m in moves.items():
+        action, i, q = m.get("action"), m.get("topic"), (m.get("question") or "").strip()
+        if action not in ("ask", "follow_up") or not q or not isinstance(i, int) or not 0 <= i < len(rows):
+            continue
+        r = rows[i]
+        if action == "ask" and r["asked"]:
+            action = "follow_up"
+        if action == "follow_up" and (not r["asked"] or r["followups"] >= MAX_FOLLOWUPS_PER_TOPIC):
+            continue
+        if must_cover and action != "ask":
+            continue
+        try:
+            urgency = max(1, min(5, int(m.get("urgency") or 3)))
+        except (TypeError, ValueError):
+            urgency = 3
+        cands.append({"by": by, "action": action, "topic": i, "question": q, "why": (m.get("why") or "").strip(), "urgency": urgency})
+    if not cands:
+        return None
+    cands.sort(key=lambda c: (-c["urgency"], c["action"] != "follow_up", asked[c["by"]], c["by"] != "eng"))
+    return cands[0]
+
+
+def panel_reads(job: dict, turns: list[dict]) -> dict:
+    from concurrent.futures import ThreadPoolExecutor
+
+    transcript = "\n\n".join(
+        f"Q ({'must-have' if t['must'] else 'nice-to-have'}: {t['requirement']}): {t['q']}\n"
+        f"A [{t['status']}, {len(t['citations'])} citations]: {_clip(t['answer'], 900)}"
+        + (f"\nFollow-up A: {_clip(t['followup'], 600)}" if t.get("followup") else "")
+        for t in turns
+    )
+    ask = (f"Job description:\n{job['description']}\n\nInterview transcript:\n{transcript}\n\n"
+           "Give your own read from your role. verdict: Fit only if every must-have is supported by a cited answer. "
+           "read: 1-2 sentences in the first person, as you'd say it to your teammate, naming the strongest evidence and your main concern.")
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futs = {by: pool.submit(_claude, ROLE_SYSTEM[by], ask, READ_SCHEMA) for by in PANEL}
+        return {by: f.result() for by, f in futs.items()}
+
+
+def joint_verdict(reads: dict, turns: list[dict]) -> dict:
+    """Agree a verdict, or flag a split. A Fit always needs cited evidence for every must-have."""
+    rule = rule_verdict(turns)
+    hm, eng = reads["hm"]["verdict"], reads["eng"]["verdict"]
+    out = {**rule, "reads": {by: {"verdict": r["verdict"], "read": r["read"]} for by, r in reads.items()}}
+    if hm == eng and (hm == "Not a fit" or rule["verdict"] == "Fit"):
+        out.update(verdict=hm, by="team", split=False,
+                   summary=f"Both panel agents say {hm}. " + rule["summary"])
+    elif hm == eng:
+        out.update(by="team (evidence rule)", split=False,
+                   summary=f"Both agents leaned {hm}, but a must-have has no cited evidence, so the panel can't call it a Fit. " + rule["summary"])
+    else:
+        out.update(by="team (split)", split=True,
+                   summary=f"The panel split: the Hiring Manager says {hm}, the Senior Engineer says {eng}. The evidence decides: " + rule["summary"])
+    return out
+
 # ---------------------------------------------------------------- the interview
-def interview(job_id: str | dict, url: str, live: bool | None = None, pace: float = 1.0) -> Iterator[dict]:
+def _team_loop(job: dict, questions: list[dict], ask, answer_event, wait):
+    """Live panel: each turn both agents propose a move and the floor rule picks one."""
+    rows = [{**q, "asked": False, "status": None, "answer": "", "citations": [], "nearest": [], "followups": 0} for q in questions]
+    log, asked = [], {by: 0 for by in PANEL}
+    max_turns = MAX_TURNS or len(rows) + 3
+    team_ok = True
+    for n in range(max_turns):
+        unasked = [i for i, r in enumerate(rows) if not r["asked"]]
+        left = max_turns - n
+        must_cover = left <= len(unasked)
+        moves = {}
+        if team_ok:
+            yield {"type": "thinking", "who": "recruiter"}
+            try:
+                moves = propose_moves(job, rows, log, left, must_cover)
+            except Exception as e:  # keep the interview going on the planned questions
+                llm.log_error("panel, choosing the next question", e)
+                team_ok = False
+        move = pick_move(moves, rows, asked, must_cover)
+        if move is None:
+            if not unasked:
+                break  # both agents passed and every topic is covered
+            i = unasked[0]
+            move = {"by": asker(rows[i]), "action": "ask", "topic": i, "question": rows[i]["q"], "why": ""}
+        i, by, r = move["topic"], move["by"], rows[move["topic"]]
+        follow = move["action"] == "follow_up"
+        reply, resp, ms = yield from ask(i, by, move["question"], r, followup=follow, why=move["why"])
+        asked[by] += 1
+        if follow:
+            r["followups"] += 1
+            if reply["status"] == "answered":
+                r["followup"] = (r.get("followup", "") + " " + reply["text"]).strip()
+                r["citations"] = r["citations"] + [c for c in reply["citations"] if c not in r["citations"]]
+                r["status"] = "answered"
+        else:
+            r.update(asked=True, asked_by=by, q=move["question"], answer=reply["text"], status=reply["status"],
+                     citations=reply["citations"], nearest=reply["nearest"])
+        log.append({"by": by, "i": i, "q": move["question"], "a": reply["text"], "status": reply["status"],
+                    "notes": notes_of(reply["citations"]), "followup": follow})
+        yield answer_event(i, reply, resp, ms, followup=follow)
+        wait(0.9)
+    turns = []
+    for r in rows:
+        t = {k: r[k] for k in ("q", "requirement", "must", "answer", "citations", "nearest")}
+        t["status"] = r["status"] if r["asked"] else "idk"
+        t["probed"] = r["followups"] > 0
+        if r.get("followup"):
+            t["followup"] = r["followup"]
+        turns.append(t)
+    return turns
+
+
+def interview(job_id: str | dict, url: str, live: bool | None = None, pace: float = 1.0,
+              team: bool | None = None) -> Iterator[dict]:
     """Yield UI events for one interview. pace=0 for no pauses.
 
     job_id is a key of demo/jobs.json, or a job dict with the same fields
     (title, description, questions); the evals pass their own sample jobs this way."""
     if live is None:
         live = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    if team is None:  # live mode runs the panel as a team; FITCHECK_PANEL=script keeps the scripted order
+        team = live and os.environ.get("FITCHECK_PANEL", "team") != "script"
     job = JOBS[job_id] if isinstance(job_id, str) else job_id
     if not isinstance(job_id, str):
         job_id = job.get("id", "custom")
@@ -275,7 +493,8 @@ def interview(job_id: str | dict, url: str, live: bool | None = None, pace: floa
 
     card = a2a.card()
     yield {"type": "start", "job": {k: job.get(k, "") for k in ("label", "title", "company", "sample_note", "description")},
-           "job_id": job_id, "recruiter_mode": f"Claude {MODEL}" if live else "scripted, no key", "panel": PANEL}
+           "job_id": job_id, "recruiter_mode": (f"Claude {MODEL}, panel as a team" if team else f"Claude {MODEL}") if live else "scripted, no key",
+           "panel": PANEL, "team": bool(team)}
     yield {"type": "card", "card": card, "url": url}
     wait(0.8)
 
@@ -284,51 +503,55 @@ def interview(job_id: str | dict, url: str, live: bool | None = None, pace: floa
     yield {"type": "plan", "questions": questions, "source": qsource}
     wait(0.6)
 
-    turns, probes = [], 0
-    for i, item in enumerate(questions):
-        by = asker(item)
-        req = a2a.build_request(item["q"], {"from": PANEL[by]["name"]})
-        yield {"type": "question", "i": i, "by": by, "text": item["q"], "requirement": item["requirement"],
-               "must": item["must"], "rpc": req}
+    def ask(i: int, by: str, text: str, item: dict, followup: bool = False, why: str = ""):
+        req = a2a.build_request(text, {"from": PANEL[by]["name"]})
+        ev = {"type": "question", "i": i, "by": by, "text": text, "requirement": item["requirement"], "must": item["must"], "rpc": req}
+        if followup:
+            ev["followup"] = True
+        if why:
+            ev["why"] = why
+        yield ev
         wait(1.0)
         yield {"type": "thinking", "who": "candidate"}
         t0 = time.time()
         resp = a2a.send(req)
         ms = int((time.time() - t0) * 1000)
-        reply = parse_reply(resp)
         wait(0.7)
-        turn = {**item, "answer": reply["text"], "status": reply["status"], "citations": reply["citations"],
-                "nearest": reply["nearest"]}
-        thin = (by == "eng" and reply["status"] == "answered" and item["must"] and probes < MAX_PROBES and is_thin(reply["text"]))
-        yield {"type": "answer", "i": i, "text": reply["text"], "status": reply["status"],
-               "citations": reply["citations"], "nearest": reply["nearest"], "thin": thin,
-               "mode": reply.get("mode"), "model": reply.get("model"),
-               "disclosure": reply.get("disclosure"), "ms": ms, "rpc": resp}
-        wait(0.9)
+        return parse_reply(resp), resp, ms
 
-        if thin:
-            # The Senior Engineer agent probes once: same story, asking for the numbers.
-            probes += 1
-            fq = f"Follow-up on {item['requirement'][0].lower() + item['requirement'][1:]}: what was the measurable result?"
-            req = a2a.build_request(fq, {"from": PANEL["eng"]["name"]})
-            yield {"type": "question", "i": i, "by": "eng", "text": fq, "requirement": item["requirement"], "must": item["must"],
-                   "followup": True, "rpc": req}
-            wait(1.0)
-            yield {"type": "thinking", "who": "candidate"}
-            t0 = time.time()
-            resp = a2a.send(req)
-            ms = int((time.time() - t0) * 1000)
-            f = parse_reply(resp)
-            wait(0.7)
-            turn["probed"] = True
-            if f["status"] == "answered":
-                turn["followup"] = f["text"]
-                turn["citations"] = turn["citations"] + [c for c in f["citations"] if c not in turn["citations"]]
-            yield {"type": "answer", "i": i, "text": f["text"], "status": f["status"], "citations": f["citations"],
-                   "nearest": f["nearest"], "thin": False, "followup": True, "mode": f.get("mode"),
-                   "model": f.get("model"), "disclosure": f.get("disclosure"), "ms": ms, "rpc": resp}
+    def answer_event(i: int, reply: dict, resp: dict, ms: int, thin: bool = False, followup: bool = False) -> dict:
+        ev = {"type": "answer", "i": i, "text": reply["text"], "status": reply["status"], "citations": reply["citations"],
+              "nearest": reply["nearest"], "thin": thin, "mode": reply.get("mode"), "model": reply.get("model"),
+              "disclosure": reply.get("disclosure"), "ms": ms, "rpc": resp}
+        if followup:
+            ev["followup"] = True
+        return ev
+
+    if team:
+        turns = yield from _team_loop(job, questions, ask, answer_event, wait)
+    else:
+        turns, probes = [], 0
+        for i, item in enumerate(questions):
+            by = asker(item)
+            reply, resp, ms = yield from ask(i, by, item["q"], item)
+            turn = {**item, "answer": reply["text"], "status": reply["status"], "citations": reply["citations"],
+                    "nearest": reply["nearest"]}
+            thin = (by == "eng" and reply["status"] == "answered" and item["must"] and probes < MAX_PROBES and is_thin(reply["text"]))
+            yield answer_event(i, reply, resp, ms, thin=thin)
             wait(0.9)
-        turns.append(turn)
+
+            if thin:
+                # The Senior Engineer agent probes once: same story, asking for the numbers.
+                probes += 1
+                fq = f"Follow-up on {item['requirement'][0].lower() + item['requirement'][1:]}: what was the measurable result?"
+                f, resp, ms = yield from ask(i, "eng", fq, item, followup=True)
+                turn["probed"] = True
+                if f["status"] == "answered":
+                    turn["followup"] = f["text"]
+                    turn["citations"] = turn["citations"] + [c for c in f["citations"] if c not in turn["citations"]]
+                yield answer_event(i, f, resp, ms, followup=True)
+                wait(0.9)
+            turns.append(turn)
 
     # Two-way: the candidate's agent asks one question about the role before the verdict.
     req = a2a.build_request("Before I wrap up: is there anything you'd like to ask about the role?",
@@ -350,7 +573,18 @@ def interview(job_id: str | dict, url: str, live: bool | None = None, pace: floa
     wait(0.9)
 
     yield {"type": "thinking", "who": "recruiter"}
-    verdict = judge(job, turns, live)
+    verdict = None
+    if team:
+        try:
+            reads = panel_reads(job, turns)
+            for by in PANEL:
+                yield {"type": "panel_read", "by": by, "verdict": reads[by]["verdict"], "text": reads[by]["read"]}
+                wait(1.0)
+            verdict = joint_verdict(reads, turns)
+        except Exception as e:
+            llm.log_error("panel, verdict", e)
+    if verdict is None:
+        verdict = judge(job, turns, live)
     wait(0.8)
     yield {"type": "verdict", **verdict}
     yield {"type": "done"}
@@ -370,6 +604,8 @@ def run_cli(job_ids: list[str], url: str, fast: bool = False) -> int:
                 print("    scorecard: " + "; ".join(f"{q['requirement']} ({'must' if q['must'] else 'nice'})" for q in ev["questions"]))
             elif t in ("question", "invite"):
                 who = PANEL[ev.get("by", "hm")]["name"].replace(" Agent", "")
+                if ev.get("why"):
+                    print(f"\n   ({who}: {ev['why']})", end="")
                 print(f"\n{who} > {'(follow-up) ' if ev.get('followup') else ''}{ev['text']}")
             elif t == "answer":
                 print(f"Candidate > {ev['text']}")
@@ -381,6 +617,8 @@ def run_cli(job_ids: list[str], url: str, fast: bool = False) -> int:
                 print(f"Candidate > {ev['text']}")
             elif t == "role_answer":
                 print(f"Hiring Manager > {ev['text']}")
+            elif t == "panel_read":
+                print(f"\n{PANEL[ev['by']]['name'].replace(' Agent', '')}'s read > {ev['verdict']}. {ev['text']}")
             elif t == "verdict":
                 print(f"\nPanel verdict: {ev['verdict']}\n  {ev['summary']}")
                 for c in ev.get("scorecard", []):

@@ -46,7 +46,9 @@ Each live run is saved under `build/recordings/`, which is gitignored. To replay
 | Mode | Candidate agent | Interview panel |
 |---|---|---|
 | Mock (no key) | Quotes the best matching sentences from the notes, with citations. Nothing is generated. | Scripted questions from `demo/jobs.json`. Fit only if every must-have got a cited answer. |
-| Live (`ANTHROPIC_API_KEY`) | Claude answers from the retrieved excerpts only, and must cite them. | Claude writes the questions from the job description and the verdict from the transcript. |
+| Live (`ANTHROPIC_API_KEY`) | Claude answers from the retrieved excerpts only, and must cite them. | A team of two Claude agents (below). |
+
+**The live panel is a team, not a script.** The Hiring Manager and the Senior Engineer are separate Claude calls, each with its own role and goals. Both see the job description, the shared scorecard and the transcript so far. Before every question each proposes a move: ask a new topic, follow up on an answer (often one the other agent's question surfaced), or pass. The most urgent move goes first, with a cap on questions (scorecard rows plus 3 follow-ups, or `FITCHECK_MAX_TURNS`); near the cap only unasked topics are allowed, so every row gets covered. The page shows each agent's reason for asking. At the end each agent gives its own read, and the panel agrees a verdict or flags a split, in which case the evidence decides. A Fit always needs a cited answer for every must-have. `FITCHECK_PANEL=script` keeps the live panel in the planned order.
 
 The A2A traffic is real in both modes. The candidate agent runs as its own process on `:8787`, and the panel only reaches it over HTTP JSON-RPC.
 

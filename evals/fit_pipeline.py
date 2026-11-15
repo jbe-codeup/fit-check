@@ -136,13 +136,13 @@ def make_target(pool: AgentPool, live: bool, model: str, recruiter_prompt: str |
 
     def fitcheck_interview(inputs: dict) -> dict:
         url = pool.url(inputs["candidate"], inputs["notes_dir"])
-        turns, verdict, source = [], {}, None
+        turns, verdict, source = {}, {}, None  # keyed by scorecard row; the live panel can ask rows in any order
         for ev in recruiter.interview(inputs["job"], url, live=live, pace=0):
             if ev["type"] == "plan":
                 source = ev["source"]
-            elif ev["type"] == "question":
-                turns.append({"q": ev["text"], "requirement": ev["requirement"], "must": ev["must"]})
-            elif ev["type"] == "answer":
+            elif ev["type"] == "question" and not ev.get("followup"):
+                turns[ev["i"]] = {"q": ev["text"], "requirement": ev["requirement"], "must": ev["must"]}
+            elif ev["type"] == "answer" and not ev.get("followup") and ev["i"] in turns:
                 turns[ev["i"]].update(status=ev["status"], answer=ev["text"], citations=ev["citations"])
             elif ev["type"] == "verdict":
                 verdict = ev
@@ -153,7 +153,7 @@ def make_target(pool: AgentPool, live: bool, model: str, recruiter_prompt: str |
             "gaps": verdict.get("gaps", []),
             "verdict_by": verdict.get("by"),
             "question_source": source,
-            "turns": turns,
+            "turns": [turns[i] for i in sorted(turns)],
         }
 
     return fitcheck_interview
