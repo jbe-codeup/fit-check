@@ -199,3 +199,7 @@ tests/         test_answer.py  test_fit_evals.py  test_interview.py
 - An MCP server, so the same candidate agent works from Claude and other MCP clients.
 - A hosted chat page.
 - A paste-a-job-description fit check.
+
+## License
+
+MIT, see [LICENSE](LICENSE).
